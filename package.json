@@ -1,0 +1,17 @@
+{
+  "name": "sia-bot-framework",
+  "version": "1.0.0",
+  "description": "",
+  "private": true,
+  "main": "app.js",
+  "scripts": {
+    "dev": "PORT=3978 NODE_ENV=development node app.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "skimtechnologies.com",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "botbuilder": "^3.7.0",
+    "restify": "^4.3.0"
+  }
+}
