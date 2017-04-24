@@ -51,10 +51,6 @@ function getAlert(alert_id, topics, since) {
     return fetch(BASE_URL + '/alerts/' + alert_id, option={
         'method': 'GET',
         'headers': headers,
-        'body': JSON.stringify({
-            'topics': topics,
-            'since': since
-        })
     }).then(res => res.json());
 }
 
@@ -78,7 +74,7 @@ function deleteAlert(alert_id) {
 //     .then(json => console.log(json))
 //     .catch(err => console.log(err));
 
-// getAlert('58fe0075c363060001b60d66').then(function(json) {
+// getAlert('58fe1605c363060001b60d67')
 //     .then(json => console.log(json))
 //     .catch(err => console.log(err));
 

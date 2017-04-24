@@ -29,7 +29,8 @@ function askLUIS(q) {
 }
 
 let _intents = {
-    createAlert : /start monitoring (.+)/
+    createAlert : /start monitoring (.+)/,
+    retrieveAlert : /retrieve alert for (.+)/
 }
 
 function askRegex(q) {
@@ -76,6 +77,12 @@ function createAlert(session, msg) {
     session.beginDialog("/createAlert", entities);
 }
 
+function retrieveAlert(session, msg) {
+    var entities = msg.entities;
+
+    session.beginDialog("/retrieveAlert", entities);
+}
+
 //=========================================================
 // Bot Setup
 //=========================================================
@@ -110,7 +117,10 @@ function main() {
                     createAlert(session, response);
                 }
                 break;
-
+                case 'retrieveAlert': {
+                    retrieveAlert(session, response);
+                }
+                break;
                 case 'None':
                 default : {
                     session.send("Sorry.. didn't understand")
@@ -123,30 +133,8 @@ function main() {
     var companyName;
 
     bot.dialog('/createAlert', [
-        /*(session, args, next) => {
-            var companyName = args.filter((e) => {
-                return e.type == "companyName";
-            });
-
-            if (!companyName) {
-                session.beginDialog("/getCompanyName");
-            }
-            else {
-                next();
-            }
-        },*/
         (session, args, next) => {
             companyName = args[0].entity;
-
-            // var theme = args.find((e) => {
-            //     return e.type == "theme";
-            // });
-            // if (!theme) {
-            //     session.beginDialog("/getTheme");
-            // }
-            // else {
-            //     next();
-            // }
             next();
         },
         (session, args, next) => {
@@ -156,16 +144,40 @@ function main() {
         }
     ]);
 
-    /*var frequency = entities.find((e) => {
-        return e.type == "frequency";
-    });*/
-    /*if (!frequency) {
-        session.beginDialog("/getFrequency")
-    }*/
-
-    bot.dialog('/getCompanyName', [
+    bot.dialog('/retrieveAlert', [
         (session, args, next) => {
+            companyName = args[0].entity;
+            next();
+        },
+        (session, args, next) => {
+            api.getAlerts().then(
+                (alerts) => {
+                    var filtered = alerts.filter((alert) => {
+                       return alert.title === companyName
+                    });
 
+                    if (filtered.length === 1) {
+                        api.getAlert(filtered[0].id)
+                            .then(json => session.send('Found this alerts: \n' + JSON.stringify(json)))
+                            .catch(err => session.send('Failed to get alert for \"' + companyName + '\"'));
+                    } else {
+                        session.send('There are more than one alert for that company');
+                    }
+                }
+            ).catch(
+                err => {
+                    1;
+                }
+            );
+        }
+    ]);
+
+    bot.dialog('/getAlertID', [
+        (session) => {
+            builder.Prompts.text(session, "For which company?");
+        },
+        (session, results) => {
+            session.endDialogWithResult({response: results.response});
         }
     ]);
 
@@ -184,7 +196,8 @@ function main() {
             session.endDialogWithResult({response: results.response});
         }
     ]);
-}
+
+
 
 main();
 /*askLUIS("updates on microsoft")
