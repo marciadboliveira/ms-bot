@@ -8,25 +8,16 @@ var config = nconf.env().argv().file({file: 'localConfig.json'});
 var BASE_URL = 'https://api.skimtechnologies.com/v2';
 
 var headers = {
-    'x-api-key': config.get("SKIM_API_TOKEN")
+    'x-api-key': config.get('SKIM_API_TOKEN')
 };
 
-function recentNews(query) {
-    var url = BASE_URL + '/bot/recent?' + querystring.stringify({'query': query});
-    return fetch(url, option={
-        'method': 'GET',
-        'headers': headers
-    }).then(res => res.json());
-}
 
-
-function getAlerts() {
+function listAlerts() {
     return fetch(BASE_URL + '/alerts', option={
         'method': 'GET',
         'headers': headers
     }).then(res => res.json());
 }
-
 
 /*
  title: string which represents the alert
@@ -48,12 +39,19 @@ function createAlert(title, keyTerms) {
  since: ISO date time string
  */
 function getAlert(alert_id, topics, since) {
+    var body = {};
+    if (topics !== undefined) {
+        body.topics = topics.join(',');
+    }
+    if (since !== undefined) {
+        body.since = since;
+    }
     return fetch(BASE_URL + '/alerts/' + alert_id, option={
         'method': 'GET',
         'headers': headers,
+        'body': JSON.stringify(body)
     }).then(res => res.json());
 }
-
 
 function deleteAlert(alert_id) {
     return fetch(BASE_URL + '/alerts/' + alert_id, option={
@@ -62,27 +60,50 @@ function deleteAlert(alert_id) {
     }).then(res => res.json());
 }
 
-// createAlert('tesla', ['tesla', 'car'])
+function getRecentNews(query, count) {
+    var params = {'query': query};
+    if (count !== undefined) {
+        params.count = count;
+    }
+    return fetch(BASE_URL + '/bot/recent?' + querystring.stringify(params), option={
+        'method': 'GET',
+        'headers': headers
+    }).then(res => res.json());
+}
+
+
+// listAlerts()
 //     .then(json => console.log(json))
 //     .catch(err => console.log(err));
 
-// getAlerts()
+// createAlert('microsoft', ['microsoft', 'bot', 'framework'])
 //     .then(json => console.log(json))
 //     .catch(err => console.log(err));
 
-// deleteAlert('58fe0075c363060001b60d66')
+// deleteAlert('58fe5e9bc363060001b60d6a')
 //     .then(json => console.log(json))
 //     .catch(err => console.log(err));
 
-// getAlert('58fe1605c363060001b60d67')
+// getAlert('58fe4ba8c363060001b60d69')
 //     .then(json => console.log(json))
 //     .catch(err => console.log(err));
 
+// getAlert('58fe4ba8c363060001b60d69', ['acquisitions', 'partnerships'])
+//     .then(json => console.log(json))
+//     .catch(err => console.log(err));
+
+// listAlerts()
+//     .then(json => console.log(json))
+//     .catch(err => console.log(err));
+
+// getRecentNews('microsoft bot framework', 3)
+//     .then(json => console.log(json))
+//     .catch(err => console.log(err));
 
 module.exports = {
-    'recentNews': recentNews,
-    'getAlerts': getAlerts,
+    'listAlerts': listAlerts,
     'createAlert': createAlert,
     'getAlert': getAlert,
-    'deleteAlert': deleteAlert
+    'deleteAlert': deleteAlert,
+    'getRecentNews': getRecentNews,
 };
