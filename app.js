@@ -28,6 +28,14 @@ function askLUIS(q) {
 }
 
 //=========================================================
+// Intent Handlers
+//=========================================================
+
+function createAlert(session, msg) {
+    session.send(msg);
+}
+
+//=========================================================
 // Bot Setup
 //=========================================================
 
@@ -54,12 +62,26 @@ function main() {
     //=========================================================
 
     bot.dialog('/', function (session) {
-        session.send("Hello World");
+        askLUIS(session.message.text)
+        .then((response) => {
+            switch (response.topScoringIntent.intent) {
+                case 'createAlert' : {
+                    createAlert(response);
+                }
+                break;
+
+                case 'None':
+                default : {
+                    session.send("Sorry.. didn't understand")
+                }
+                break;
+            }
+        });
     });
 }
 
 main();
-askLUIS("updates on microsoft")
+/*askLUIS("updates on microsoft")
 .then((result) => {
     console.log(result);
-});
+});*/
