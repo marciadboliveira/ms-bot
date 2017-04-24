@@ -29,12 +29,13 @@ function askLUIS(q) {
 }
 
 let _intents = {
-    createAlert : /start monitoring (.+)/,
-    retrieveAlert : /retrieve alert for (.+)/
+    listAlerts: /list alerts/,
+    createAlert: /create alert for (.+)/,
+    getAlert: /get alert for (.+)/,
+    deleteAlert: /delete alert for (.+)/
 }
 
 function askRegex(q) {
-
     var match;
     var intent = Object.keys(_intents).find(k => {
         var regex = _intents[k];
@@ -68,22 +69,6 @@ function getThemes() {
 }
 
 //=========================================================
-// Intent Handlers
-//=========================================================
-
-function createAlert(session, msg) {
-    var entities = msg.entities;
-
-    session.beginDialog("/createAlert", entities);
-}
-
-function retrieveAlert(session, msg) {
-    var entities = msg.entities;
-
-    session.beginDialog("/retrieveAlert", entities);
-}
-
-//=========================================================
 // Bot Setup
 //=========================================================
 
@@ -113,24 +98,48 @@ function main() {
         askRegex(session.message.text)
         .then((response) => {
             switch (response.topScoringIntent.intent) {
-                case 'createAlert' : {
-                    createAlert(session, response);
-                }
-                break;
-                case 'retrieveAlert': {
-                    retrieveAlert(session, response);
-                }
-                break;
+                case 'listAlerts':
+                    session.beginDialog("/listAlerts");
+                    break;
+                case 'createAlert':
+                    session.beginDialog("/createAlert", response.entities);
+                    break;
+                case 'deleteAlert':
+                    session.beginDialog("/deleteAlert", response.entities);
+                    break;
+                case 'getAlert':
+                    session.beginDialog("/getAlert", response.entities);
+                    break;
+                case 'getRecentNews':
+                    session.beginDialog("/getRecentNews", response.entities);
+                    break;
                 case 'None':
-                default : {
-                    session.send("Sorry.. didn't understand")
-                }
-                break;
+                default :
+                    session.send("Sorry... I didn't understand")
+                    break;
             }
         });
     });
 
     var companyName;
+
+    bot.dialog('/listAlerts', [
+        (session, args, next) => {
+            api.listAlerts()
+                .then(json => {
+                    session.send('Available alerts:\n' + JSON.stringify(json));
+                    next();
+                })
+                .catch(err => {
+                    session.send('Failed to list alerts');
+                    next();
+                });
+        },
+        (session, results) => {
+            session.endDialog();
+        }
+
+    ]);
 
     bot.dialog('/createAlert', [
         (session, args, next) => {
@@ -139,45 +148,88 @@ function main() {
         },
         (session, args, next) => {
             api.createAlert(companyName, [companyName])
-                .then(json => session.send('Created alert for \"' + json.title + '\"'))
-                .catch(err => session.send('Failed to create alert for \"' + companyName + '\"'));
+                .then(json => {
+                    session.send('Created alert for \"' + json.title + '\"');
+                    next();
+                })
+                .catch(err => {
+                    session.send('Failed to create alert for \"' + companyName + '\"');
+                    next();
+                })
+        },
+        (session, results) => {
+            session.endDialog();
         }
     ]);
 
-    bot.dialog('/retrieveAlert', [
+    bot.dialog('/deleteAlert', [
         (session, args, next) => {
             companyName = args[0].entity;
             next();
         },
         (session, args, next) => {
-            api.getAlerts().then(
+            api.listAlerts().then(
                 (alerts) => {
-                    var filtered = alerts.filter((alert) => {
+                    var selectedAlert = alerts.find((alert) => {
                        return alert.title === companyName
                     });
 
-                    if (filtered.length === 1) {
-                        api.getAlert(filtered[0].id)
-                            .then(json => session.send('Found this alerts: \n' + JSON.stringify(json)))
-                            .catch(err => session.send('Failed to get alert for \"' + companyName + '\"'));
-                    } else {
-                        session.send('There are more than one alert for that company');
+                    if (selectedAlert === undefined) {
+                        session.send('Failed to delete alert for \"' + companyName + '\"');
+                        next();
+                    } else { 
+                        api.deleteAlert(selectedAlert.id)
+                            .then(json => {
+                                session.send('Delete alert for \"' + selectedAlert.title + '\"');
+                                next();
+                            })
+                            .catch(err => {
+                                session.send('Failed to delete alert for \"' + companyName + '\"');
+                                next();
+                            })
                     }
                 }
-            ).catch(
-                err => {
-                    1;
-                }
             );
+        },
+        (session, results) => {
+            session.endDialog();
         }
     ]);
 
-    bot.dialog('/getAlertID', [
-        (session) => {
-            builder.Prompts.text(session, "For which company?");
+    bot.dialog('/getAlert', [
+        (session, args, next) => {
+            companyName = args[0].entity;
+            next();
+        },
+        (session, args, next) => {
+            api.listAlerts().then(
+                (alerts) => {
+                    var selectedAlert = alerts.find((alert) => {
+                       return alert.title === companyName
+                    });
+
+                    if (selectedAlert === undefined) {
+                        session.send('Failed to get alert for \"' + companyName + '\"');
+                        next();
+                    } else { 
+                        api.getAlert(selectedAlert.id)
+                            .then(json => {
+                                session.send('Got alert for \"' + selectedAlert.title + '\":\n' + JSON.stringify(json));
+                                next();
+                            })
+                            .catch(err => {
+                                session.send('Failed to get alert for \"' + companyName + '\"');
+                                next();
+                            })
+                    }
+                }
+           ).catch(err => {
+               session.send('Failed to get alert for \"' + companyName + '\"');
+               next();
+           });
         },
         (session, results) => {
-            session.endDialogWithResult({response: results.response});
+            session.endDialog();
         }
     ]);
 
@@ -196,10 +248,10 @@ function main() {
             session.endDialogWithResult({response: results.response});
         }
     ]);
-
-
+}
 
 main();
+
 /*askLUIS("updates on microsoft")
 .then((result) => {
     console.log(result);
