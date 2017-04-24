@@ -81,3 +81,12 @@ function deleteAlert(alert_id) {
 // getAlert('58fe0075c363060001b60d66').then(function(json) {
 //     .then(json => console.log(json))
 //     .catch(err => console.log(err));
+
+
+module.exports = {
+    'recentNews': recentNews,
+    'getAlerts': getAlerts,
+    'createAlert': createAlert,
+    'getAlert': getAlert,
+    'deleteAlert': deleteAlert
+};

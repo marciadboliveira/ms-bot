@@ -2,6 +2,7 @@ var nconf = require('nconf');
 var request = require('request');
 var restify = require('restify');
 var builder = require('botbuilder');
+var api = require('./api.js');
 
 var config = nconf.env().argv().file({file: 'localConfig.json'});
 
@@ -119,6 +120,8 @@ function main() {
         });
     });
 
+    var companyName;
+
     bot.dialog('/createAlert', [
         /*(session, args, next) => {
             var companyName = args.filter((e) => {
@@ -133,19 +136,23 @@ function main() {
             }
         },*/
         (session, args, next) => {
-            var theme = args.find((e) => {
-                return e.type == "theme";
-            });
+            companyName = args[0].entity;
 
-            if (!theme) {
-                session.beginDialog("/getTheme");
-            }
-            else {
-                next();
-            }
+            // var theme = args.find((e) => {
+            //     return e.type == "theme";
+            // });
+            // if (!theme) {
+            //     session.beginDialog("/getTheme");
+            // }
+            // else {
+            //     next();
+            // }
+            next();
         },
         (session, args, next) => {
-            // TODO: Call API
+            api.createAlert(companyName, [companyName])
+                .then(json => session.send('Created alert for \"' + json.title + '\"'))
+                .catch(err => session.send('Failed to create alert for \"' + companyName + '\"'));
         }
     ]);
 
@@ -155,6 +162,12 @@ function main() {
     /*if (!frequency) {
         session.beginDialog("/getFrequency")
     }*/
+
+    bot.dialog('/getCompanyName', [
+        (session, args, next) => {
+
+        }
+    ]);
 
     bot.dialog('/getTheme', [
         (session, args, next) => {
@@ -168,7 +181,7 @@ function main() {
             });
         },
         (session, results) => {
-            session.endDialogWithResult(results.response);
+            session.endDialogWithResult({response: results.response});
         }
     ]);
 }
