@@ -10,7 +10,6 @@ var headers = {
 
 function recentNews(query) {
     var url = BASE_URL + '/bot/recent?' + querystring.stringify({'query': query});
-    console.log(url);
     return fetch(url, option={
         'method': 'GET',
         'headers': headers
@@ -19,6 +18,13 @@ function recentNews(query) {
     })
 }
 
-recentNews('cortana').then(function(json) {
-    console.log(json);
-});
+
+function getAlerts() {
+    var url = BASE_URL + '/alerts';
+    return fetch(url, option={
+        'method': 'GET',
+        'headers': headers
+    }).then(function(res) {
+        return res.json()
+    })
+}
