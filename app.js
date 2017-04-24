@@ -27,6 +27,37 @@ function askLUIS(q) {
     return _askLUIS(config.get("LUIS_APP_ID"), config.get("LUIS_SUBSCRIPTION_KEY"), q);
 }
 
+let _intents = {
+    createAlert : /start monitoring (.+)/
+}
+
+function askRegex(q) {
+
+    var match;
+    var intent = Object.keys(_intents).find(k => {
+        var regex = _intents[k];
+        return ((match = regex.exec(q)) != null);
+    });
+
+    return new Promise((resolve, reject) => {
+        var _intent = 'None';
+        if (intent) {
+            _intent = intent;
+        }
+        resolve({
+            topScoringIntent : {
+                intent : _intent
+            },
+            entities : [
+                {
+                    entity : match[1],
+                    type : "companyName"
+                }
+            ]
+        });
+    });
+}
+
 //=========================================================
 // Intent Handlers
 //=========================================================
@@ -62,11 +93,11 @@ function main() {
     //=========================================================
 
     bot.dialog('/', function (session) {
-        askLUIS(session.message.text)
+        askRegex(session.message.text)
         .then((response) => {
             switch (response.topScoringIntent.intent) {
                 case 'createAlert' : {
-                    createAlert(response);
+                    createAlert(session, response);
                 }
                 break;
 
