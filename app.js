@@ -58,12 +58,21 @@ function askRegex(q) {
     });
 }
 
+function getThemes() {
+    return new Promise((resolve, reject) => {
+        // TODO: Likely to expand, perhaps pull from API
+        resolve([ "acquisitions", "investment", "partnerships" ]);
+    });
+}
+
 //=========================================================
 // Intent Handlers
 //=========================================================
 
 function createAlert(session, msg) {
-    session.send(msg);
+    var entities = msg.entities;
+
+    session.beginDialog("/createAlert", entities);
 }
 
 //=========================================================
@@ -109,6 +118,59 @@ function main() {
             }
         });
     });
+
+    bot.dialog('/createAlert', [
+        /*(session, args, next) => {
+            var companyName = args.filter((e) => {
+                return e.type == "companyName";
+            });
+
+            if (!companyName) {
+                session.beginDialog("/getCompanyName");
+            }
+            else {
+                next();
+            }
+        },*/
+        (session, args, next) => {
+            var theme = args.find((e) => {
+                return e.type == "theme";
+            });
+
+            if (!theme) {
+                session.beginDialog("/getTheme");
+            }
+            else {
+                next();
+            }
+        },
+        (session, args, next) => {
+            // TODO: Call API
+        }
+    ]);
+
+    /*var frequency = entities.find((e) => {
+        return e.type == "frequency";
+    });*/
+    /*if (!frequency) {
+        session.beginDialog("/getFrequency")
+    }*/
+
+    bot.dialog('/getTheme', [
+        (session, args, next) => {
+            getThemes()
+            .then((result) => {
+                session.send("Choose topics to be alerted to");
+                result.forEach((t) => {
+                    session.send(t);
+                });
+                builder.Prompts.text(session, "?");
+            });
+        },
+        (session, results) => {
+            session.endDialogWithResult(results.response);
+        }
+    ]);
 }
 
 main();
