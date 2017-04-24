@@ -1,8 +1,9 @@
 sia-bot-framework
 =================
 
+
 1. run `npm run dev`
-2. Open `Bot Framework Emulator` and connect to http://0.0.0.0:3978/api/messages without appID / Password
+2. Open `Bot Framework Emulator`(https://emulator.botframework.com/)  and connect to http://0.0.0.0:3978/api/messages without appID / Password
 
 # Optional requirements
 
