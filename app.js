@@ -3,6 +3,7 @@ var request = require('request');
 var restify = require('restify');
 var builder = require('botbuilder');
 var api = require('./api.js');
+var fs = require('fs')
 
 var config = nconf.env().argv().file({file: 'localConfig.json'});
 
@@ -49,6 +50,7 @@ function titleCase(str) {
     return str.replace(/\w\S*/g, function(txt){return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();});
 }
 
+<<<<<<< HEAD
 function createThemeCard(session, themes) {
 
     var card = new builder.HeroCard(session)
@@ -66,6 +68,15 @@ function createThemeCard(session, themes) {
     card.buttons(buttons);
 
     return card;
+}
+
+function loadHelp() {
+    return new Promise((resolve, reject) => {
+        fs.readFile('help.md', 'utf-8', (err, data) => {
+            if (err) reject(err);
+            resolve(data)
+        })
+    })
 }
 
 //=========================================================
@@ -112,6 +123,9 @@ function main() {
                     break;
                 case 'getRecentNews':
                     session.beginDialog("/getRecentNews", response.entities);
+                    break;
+                case 'help':
+                    session.beginDialog("/help");
                     break;
                 case 'None':
                 default :
@@ -319,6 +333,12 @@ function main() {
             }
         }
     ]);
+
+    bot.dialog('/help', (session, args, next) => {
+        loadHelp().then((result) => {
+            session.send(result);
+        })
+    });
 }
 
 main();
