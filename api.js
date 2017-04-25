@@ -68,7 +68,7 @@ function getRecentNews(query, count) {
     return fetch(BASE_URL + '/bot/recent?' + querystring.stringify(params), option={
         'method': 'GET',
         'headers': headers
-    })
+    }).then(res => res.json());
 }
 
 

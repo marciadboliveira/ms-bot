@@ -242,10 +242,7 @@ function main() {
         (session, args, next) => {
             session.send('Working on that...');
             api.getRecentNews(companyName, 3)
-                .then(res => {
-                    return res.json();
-                })
-                .then((json) => {
+                .then(json => {
                     session.send('Recent news for \"' + companyName + '\":\n' + JSON.stringify(json));
                     next();
                 })
