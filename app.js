@@ -2,6 +2,7 @@ var nconf = require('nconf');
 var request = require('request');
 var restify = require('restify');
 var builder = require('botbuilder');
+var api = require('./api.js');
 
 var config = nconf.env().argv().file({file: 'localConfig.json'});
 
@@ -28,11 +29,13 @@ function askLUIS(q) {
 }
 
 let _intents = {
-    createAlert : /start monitoring (.+)/
+    listAlerts: /list alerts/,
+    createAlert: /create alert for (.+)/,
+    getAlert: /get alert for (.+)/,
+    deleteAlert: /delete alert for (.+)/
 }
 
 function askRegex(q) {
-
     var match;
     var intent = Object.keys(_intents).find(k => {
         var regex = _intents[k];
@@ -66,16 +69,6 @@ function getThemes() {
 }
 
 //=========================================================
-// Intent Handlers
-//=========================================================
-
-function createAlert(session, msg) {
-    var entities = msg.entities;
-
-    session.beginDialog("/createAlert", entities);
-}
-
-//=========================================================
 // Bot Setup
 //=========================================================
 
@@ -105,56 +98,140 @@ function main() {
         askRegex(session.message.text)
         .then((response) => {
             switch (response.topScoringIntent.intent) {
-                case 'createAlert' : {
-                    createAlert(session, response);
-                }
-                break;
-
+                case 'listAlerts':
+                    session.beginDialog("/listAlerts");
+                    break;
+                case 'createAlert':
+                    session.beginDialog("/createAlert", response.entities);
+                    break;
+                case 'deleteAlert':
+                    session.beginDialog("/deleteAlert", response.entities);
+                    break;
+                case 'getAlert':
+                    session.beginDialog("/getAlert", response.entities);
+                    break;
+                case 'getRecentNews':
+                    session.beginDialog("/getRecentNews", response.entities);
+                    break;
                 case 'None':
-                default : {
-                    session.send("Sorry.. didn't understand")
-                }
-                break;
+                default :
+                    session.send("Sorry... I didn't understand")
+                    break;
             }
         });
     });
 
-    bot.dialog('/createAlert', [
-        /*(session, args, next) => {
-            var companyName = args.filter((e) => {
-                return e.type == "companyName";
-            });
+    var companyName;
 
-            if (!companyName) {
-                session.beginDialog("/getCompanyName");
-            }
-            else {
-                next();
-            }
-        },*/
+    bot.dialog('/listAlerts', [
         (session, args, next) => {
-            var theme = args.find((e) => {
-                return e.type == "theme";
-            });
+            api.listAlerts()
+                .then(json => {
+                    session.send('Available alerts:\n' + JSON.stringify(json));
+                    next();
+                })
+                .catch(err => {
+                    session.send('Failed to list alerts');
+                    next();
+                });
+        },
+        (session, results) => {
+            session.endDialog();
+        }
 
-            if (!theme) {
-                session.beginDialog("/getTheme");
-            }
-            else {
-                next();
-            }
+    ]);
+
+    bot.dialog('/createAlert', [
+        (session, args, next) => {
+            companyName = args[0].entity;
+            next();
         },
         (session, args, next) => {
-            // TODO: Call API
+            api.createAlert(companyName, [companyName])
+                .then(json => {
+                    session.send('Created alert for \"' + json.title + '\"');
+                    next();
+                })
+                .catch(err => {
+                    session.send('Failed to create alert for \"' + companyName + '\"');
+                    next();
+                })
+        },
+        (session, results) => {
+            session.endDialog();
         }
     ]);
 
-    /*var frequency = entities.find((e) => {
-        return e.type == "frequency";
-    });*/
-    /*if (!frequency) {
-        session.beginDialog("/getFrequency")
-    }*/
+    bot.dialog('/deleteAlert', [
+        (session, args, next) => {
+            companyName = args[0].entity;
+            next();
+        },
+        (session, args, next) => {
+            api.listAlerts().then(
+                (alerts) => {
+                    var selectedAlert = alerts.find((alert) => {
+                       return alert.title === companyName
+                    });
+
+                    if (selectedAlert === undefined) {
+                        session.send('Failed to delete alert for \"' + companyName + '\"');
+                        next();
+                    } else { 
+                        api.deleteAlert(selectedAlert.id)
+                            .then(json => {
+                                session.send('Delete alert for \"' + selectedAlert.title + '\"');
+                                next();
+                            })
+                            .catch(err => {
+                                session.send('Failed to delete alert for \"' + companyName + '\"');
+                                next();
+                            })
+                    }
+                }
+            );
+        },
+        (session, results) => {
+            session.endDialog();
+        }
+    ]);
+
+    bot.dialog('/getAlert', [
+        (session, args, next) => {
+            companyName = args[0].entity;
+            next();
+        },
+        (session, args, next) => {
+            api.listAlerts().then(
+                (alerts) => {
+                    var selectedAlert = alerts.find((alert) => {
+                       return alert.title === companyName
+                    });
+
+                    if (selectedAlert === undefined) {
+                        session.send('Failed to get alert for \"' + companyName + '\"');
+                        next();
+                    } else { 
+                        api.getAlert(selectedAlert.id)
+                            .then(json => {
+                                session.send('Got alert for \"' + selectedAlert.title + '\":\n' + JSON.stringify(json));
+                                next();
+                            })
+                            .catch(err => {
+                                session.send('Failed to get alert for \"' + companyName + '\"');
+                                next();
+                            })
+                    }
+                }
+           ).catch(err => {
+               session.send('Failed to get alert for \"' + companyName + '\"');
+               next();
+           });
+        },
+        (session, results) => {
+            session.endDialog();
+        }
+    ]);
 
     bot.dialog('/getTheme', [
         (session, args, next) => {
@@ -174,6 +251,7 @@ function main() {
 }
 
 main();
+
 /*askLUIS("updates on microsoft")
 .then((result) => {
     console.log(result);
