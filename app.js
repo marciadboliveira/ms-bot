@@ -99,8 +99,7 @@ function main() {
         .then((response) => {
             switch (response.topScoringIntent.intent) {
                 case 'listAlerts':
-                    session.beginDialog("/getThemes");
-                    //session.beginDialog("/listAlerts");
+                    session.beginDialog("/listAlerts");
                     break;
                 case 'createAlert':
                     session.beginDialog("/createAlert", response.entities);
