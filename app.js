@@ -69,6 +69,10 @@ function getThemes() {
     });
 }
 
+function titleCase(str) {
+    return str.replace(/\w\S*/g, function(txt){return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();});
+}
+
 //=========================================================
 // Bot Setup
 //=========================================================
@@ -267,11 +271,23 @@ function main() {
         (session, args, next) => {
             getThemes()
             .then((result) => {
-                session.send("Choose topics to be alerted to");
-                result.forEach((t) => {
-                    session.send(t);
+                
+                var card = new builder.HeroCard(session)
+                .title('BotFramework Hero Card')
+                .subtitle('Your bots — wherever your users are talking')
+                .text('Choose a theme')
+                .images([
+                    builder.CardImage.create(session, 'https://sec.ch9.ms/ch9/7ff5/e07cfef0-aa3b-40bb-9baa-7c9ef8ff7ff5/buildreactionbotframework_960.jpg')
+                ]);
+
+                var buttons = [];
+                buttons = result.map((e) => {
+                    return new builder.CardAction.imBack(session, e, titleCase(e));
                 });
-                builder.Prompts.text(session, "?");
+                card.buttons(buttons);
+
+                var msg = new builder.Message(session).addAttachment(card);
+                session.send(msg);
             });
         },
         (session, results) => {
