@@ -44,7 +44,6 @@ function titleCase(str) {
     return str.replace(/\w\S*/g, function(txt){return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();});
 }
 
-<<<<<<< HEAD
 function createThemeCard(session, themes) {
 
     var card = new builder.HeroCard(session)
@@ -100,35 +99,6 @@ function main() {
     //=========================================================
 
     bot.dialog('/', function (session) {
-<<<<<<< Updated upstream
-        askLUIS(session.message.text)
-        .then((response) => {
-            switch (response.topScoringIntent.intent) {
-                case 'listAlerts':
-                    session.beginDialog("/listAlerts");
-                    break;
-                case 'createAlert':
-                    session.beginDialog("/createAlert", response.entities);
-                    break;
-                case 'deleteAlert':
-                    session.beginDialog("/deleteAlert", response.entities);
-                    break;
-                case 'retrieveAlert':
-                    session.beginDialog("/retrieveAlert", response.entities);
-                    break;
-                case 'getRecentNews':
-                    session.beginDialog("/getRecentNews", response.entities);
-                    break;
-                case 'help':
-                    session.beginDialog("/help");
-                    break;
-                case 'None':
-                default :
-                    session.send("Sorry... I didn't understand")
-                    break;
-            }
-        });
-=======
         let message = session.message.text;
         if (message[0] == '/') {
             let parts = message.split(':');
@@ -162,7 +132,6 @@ function main() {
                 }
             });
         }
->>>>>>> Stashed changes
     });
 
     bot.dialog('/end', [
@@ -319,29 +288,8 @@ function main() {
     bot.dialog('/getThemes', [
         (session, args, next) => {
             getThemes()
-<<<<<<< Updated upstream
             .then((themes) => {
                 session.beginDialog('/getTheme', themes);
-=======
-            .then((result) => {
-                
-                var card = new builder.HeroCard(session)
-                    .title('BotFramework Hero Card')
-                    .subtitle('Your bots — wherever your users are talking')
-                    .text('Choose a theme')
-                    .images([
-                        builder.CardImage.create(session, 'https://sec.ch9.ms/ch9/7ff5/e07cfef0-aa3b-40bb-9baa-7c9ef8ff7ff5/buildreactionbotframework_960.jpg')
-                    ]);
-
-                var buttons = [];
-                buttons = result.map((e) => {
-                    return new builder.CardAction.imBack(session, e, titleCase(e));
-                });
-                card.buttons(buttons);
-
-                var msg = new builder.Message(session).addAttachment(card);
-                session.send(msg);
->>>>>>> Stashed changes
             });
         },
         (session, results) => {
