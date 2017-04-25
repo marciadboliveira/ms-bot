@@ -2,8 +2,9 @@ var nconf = require('nconf');
 var request = require('request');
 var restify = require('restify');
 var builder = require('botbuilder');
-var api = require('./api.js');
 var fs = require('fs')
+var api = require('./api.js');
+var cards = require('./cards.js')
 
 var config = nconf.env().argv().file({file: 'localConfig.json'});
 
@@ -11,17 +12,7 @@ var config = nconf.env().argv().file({file: 'localConfig.json'});
 // Utility functions
 //=========================================================
 
-function _getEntity(entities, session){
-    if (!entities.length && session){
-        session.send('No entities found in your query!');
-        throw Error();
-    }
-    // TODO: if multiple entities are present decide which one to use- for now the first one            
-    var entityName = entities[0]; 
-    return entityName;
-}
-
-function buildArgs(entities) {
+function buildArgs(entites) {
     return entities.map(o => o.entity)
 }
 
@@ -96,8 +87,8 @@ function main() {
       
     // Create chat bot
     var connector = new builder.ChatConnector({
-      appId: config.get('MICROSOFT_APP_ID'),
-      appPassword: config.get('MICROSOFT_APP_PASSWORD')
+      appId: process.env.MICROSOFT_APP_ID,
+      appPassword: process.env.MICROSOFT_APP_PASSWORD
     });
 
     //var connector = new builder.ConsoleConnector().listen()
@@ -139,8 +130,8 @@ function main() {
                         session.beginDialog('/help');
                         break;
                     case 'None':
-                    default :
-                        session.send("Sorry... I didn't understand")
+                    default:
+                        session.send("Sorry... I didn't understand that command.")
                         break;
                 }
             });
@@ -231,7 +222,7 @@ function main() {
 
     bot.dialog('/retrieveAlert', [
         (session, args, next) => {
-            companyName = _getEntity(args, session);
+            companyName = args[0];
             next();
         },
         (session, args, next) => {
@@ -247,8 +238,10 @@ function main() {
                     } else { 
                         api.getAlert(selectedAlert.id)
                             .then(json => {
-                                //session.send('Got alert for \"' + selectedAlert.title + '\":\n' + JSON.stringify(json));
-                                session.say(json.data[0].skim.body, json.data[0].skim.body.split('\n')[0]);
+                                // session.say(json.data[0].skim.body, json.data[0].skim.body.split('\n')[0]);
+                                let data = json.data.slice(0, 3);
+                                let skims = data.map(d => d.skim);
+                                cards.sendSkimsCards(skims, session);
                                 next();
                             })
                             .catch(err => {
@@ -273,8 +266,9 @@ function main() {
         },
         (session, args, next) => {
             api.getRecentNews(companyName, 3)
-                .then(json => {
-                    session.send('Recent news for \"' + companyName + '\":\n' + JSON.stringify(json));
+                .then(skims => {
+                    session.send('Here are the recent news for \"' + companyName + '\":');
+                    cards.sendSkimsCards(skims, session);
                     next();
                 })
                .catch(err => {
@@ -287,7 +281,7 @@ function main() {
                 .textFormat(builder.TextFormat.xml)
                 .attachments([
                     new builder.ThumbnailCard(session)
-                        .title('Do you want to set an alert?')
+                        .title('Do you want to set an alert for \"' + companyName + '\"?')
                         .buttons([
                             builder.CardAction.postBack(session, '/createAlert:' + companyName , 'Yes'),
                             builder.CardAction.postBack(session, '/end', 'No')
