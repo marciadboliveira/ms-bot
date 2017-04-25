@@ -251,8 +251,15 @@ function main() {
                 })
                .catch(err => {
                     session.send('Failed to get recent news for \"' + companyName + '\"');
-                    next();
+                    session.endDialog();
                });
+        },
+        (session, results) => {
+            session.send("Do you want me to turn that into an alert?");
+            builder.Prompts.text(session, "?");
+        },
+        (session, results) => {
+            next();
         },
         (session, results) => {
             session.endDialog();
