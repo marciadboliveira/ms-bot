@@ -17,8 +17,12 @@ function _getEntity(entities, session){
         throw Error();
     }
     // TODO: if multiple entities are present decide which one to use- for now the first one            
-    var entityName = entities[0].entity; 
+    var entityName = entities[0]; 
     return entityName;
+}
+
+function buildArgs(entities) {
+    return entities.map(o => o.entity)
 }
 
 function _askLUIS(appId, subKey, q) {
@@ -105,35 +109,50 @@ function main() {
     //=========================================================
 
     bot.dialog('/', function (session) {
-        askLUIS(session.message.text)
-        .then((response) => {
-            switch (response.topScoringIntent.intent) {
-                case 'listAlerts':
-                    session.beginDialog("/listAlerts");
-                    break;
-                case 'createAlert':
-                    session.beginDialog("/createAlert", response.entities);
-                    break;
-                case 'deleteAlert':
-                    session.beginDialog("/deleteAlert", response.entities);
-                    break;
-                case 'retrieveAlert':
-                    session.beginDialog("/retrieveAlert", response.entities);
-                    break;
-                case 'getRecentNews':
-                    session.beginDialog("/getRecentNews", response.entities);
-                    break;
-                case 'help':
-                    session.beginDialog("/help");
-                    break;
-                case 'None':
-                default :
-                    session.send("Sorry... I didn't understand");
-                    session.say("Sorry, I didn't understand");
-                    break;
-            }
-        });
+        let message = session.message.text;
+        if (message[0] == '/') {
+            let parts = message.split(':');
+            session.beginDialog(parts[0], parts.slice(1, parts.length));
+        } else {
+            askLUIS(message)
+            .then((response) => {
+                switch (response.topScoringIntent.intent) {
+                    case 'listAlerts':
+                        session.beginDialog("/listAlerts");
+                        break;
+                    case 'createAlert':
+                        session.beginDialog("/createAlert", buildArgs(response.entities));
+                        break;
+                    case 'deleteAlert':
+                        session.beginDialog("/deleteAlert", buildArgs(response.entities));
+                        break;
+                    case 'retrieveAlert':
+                        session.beginDialog("/retrieveAlert", buildArgs(response.entities));
+                        break;
+                    case 'getRecentNews':
+                        session.beginDialog("/getRecentNews", buildArgs(response.entities));
+                        break;
+                    case 'end':
+                        session.beginDialog('/end');
+                        break;
+                    case 'help':
+                        session.beginDialog('/help');
+                        break;
+                    case 'None':
+                    default :
+                        session.send("Sorry... I didn't understand")
+                        break;
+                }
+            });
+        }
     });
+
+    bot.dialog('/end', [
+        (session) => {
+            session.send('Do you need anything else?');
+            session.endDialog();
+        }
+    ]);
 
     var companyName;
 
@@ -157,7 +176,7 @@ function main() {
 
     bot.dialog('/createAlert', [
         (session, args, next) => {
-            companyName = _getEntity(args, session);
+            companyName = args[0];
             next();
         },
         (session, args, next) => {
@@ -178,7 +197,7 @@ function main() {
 
     bot.dialog('/deleteAlert', [
         (session, args, next) => {
-            companyName = args[0].entity;
+            companyName = args[0];
             next();
         },
         (session, args, next) => {
@@ -189,7 +208,7 @@ function main() {
                     });
 
                     if (selectedAlert === undefined) {
-                        session.send('Failed to delete alert for \"' + companyName + '\"');
+                        session.send('There is no alert set up for \"' + companyName + '\"');
                         next();
                     } else { 
                         api.deleteAlert(selectedAlert.id)
@@ -223,14 +242,13 @@ function main() {
                     });
 
                     if (selectedAlert === undefined) {
-                        session.send('Failed to get alert for \"' + companyName + '\"');
-                        next();
+                        session.send('Could not find alerts for \"' + companyName + '\". Retrieving recent news instead:')
+                        session.beginDialog('/getRecentNews', [companyName]);
                     } else { 
                         api.getAlert(selectedAlert.id)
                             .then(json => {
                                 //session.send('Got alert for \"' + selectedAlert.title + '\":\n' + JSON.stringify(json));
-                                session.send('Got alert for \"' + selectedAlert.title + '\":\n');
-                                session.say(json.data[0].skim.body);
+                                session.say(json.data[0].skim.body, json.data[0].skim.body.split('\n')[0]);
                                 next();
                             })
                             .catch(err => {
@@ -240,8 +258,7 @@ function main() {
                     }
                 }
            ).catch(err => {
-               session.send('Failed to get alert for \"' + companyName + '\"');
-               next();
+               session.beginDialog('/getRecentNews', [companyName]);
            });
         },
         (session, results) => {
@@ -251,11 +268,10 @@ function main() {
 
     bot.dialog('/getRecentNews', [
         (session, args, next) => {
-            companyName = args[0].entity;
+            companyName = args[0];
             next();
         },
         (session, args, next) => {
-            session.send('Working on that...');
             api.getRecentNews(companyName, 3)
                 .then(json => {
                     session.send('Recent news for \"' + companyName + '\":\n' + JSON.stringify(json));
@@ -267,14 +283,17 @@ function main() {
                });
         },
         (session, results) => {
-            session.send("Do you want me to turn that into an alert?");
-            builder.Prompts.text(session, "?");
-        },
-        (session, results) => {
-            next();
-        },
-        (session, results) => {
-            session.endDialog();
+            var msg = new builder.Message(session)
+                .textFormat(builder.TextFormat.xml)
+                .attachments([
+                    new builder.ThumbnailCard(session)
+                        .title('Do you want to set an alert?')
+                        .buttons([
+                            builder.CardAction.postBack(session, '/createAlert:' + companyName , 'Yes'),
+                            builder.CardAction.postBack(session, '/end', 'No')
+                        ]),
+                ]);
+            session.endDialog(msg);
         }
     ]);
 
@@ -339,13 +358,9 @@ function main() {
     bot.dialog('/help', (session, args, next) => {
         loadHelp().then((result) => {
             session.send(result);
+            session.endDialog();
         })
     });
 }
 
 main();
-
-/*askLUIS("updates on microsoft")
-.then((result) => {
-    console.log(result);
-});*/
