@@ -17,7 +17,7 @@ function _getEntity(entities, session){
         throw Error();
     }
     // TODO: if multiple entities are present decide which one to use- for now the first one            
-    var entityName = args[0].entity; 
+    var entityName = entities[0].entity; 
     return entityName;
 }
 
@@ -50,7 +50,6 @@ function titleCase(str) {
     return str.replace(/\w\S*/g, function(txt){return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();});
 }
 
-<<<<<<< HEAD
 function createThemeCard(session, themes) {
 
     var card = new builder.HeroCard(session)
@@ -93,8 +92,8 @@ function main() {
       
     // Create chat bot
     var connector = new builder.ChatConnector({
-      appId: process.env.MICROSOFT_APP_ID,
-      appPassword: process.env.MICROSOFT_APP_PASSWORD
+      appId: config.get('MICROSOFT_APP_ID'),
+      appPassword: config.get('MICROSOFT_APP_PASSWORD')
     });
 
     //var connector = new builder.ConsoleConnector().listen()
@@ -129,7 +128,8 @@ function main() {
                     break;
                 case 'None':
                 default :
-                    session.send("Sorry... I didn't understand")
+                    session.send("Sorry... I didn't understand");
+                    session.say("Sorry, I didn't understand");
                     break;
             }
         });
@@ -212,7 +212,7 @@ function main() {
 
     bot.dialog('/retrieveAlert', [
         (session, args, next) => {
-            companyName = _getEntity;
+            companyName = _getEntity(args, session);
             next();
         },
         (session, args, next) => {
@@ -228,7 +228,9 @@ function main() {
                     } else { 
                         api.getAlert(selectedAlert.id)
                             .then(json => {
-                                session.send('Got alert for \"' + selectedAlert.title + '\":\n' + JSON.stringify(json));
+                                //session.send('Got alert for \"' + selectedAlert.title + '\":\n' + JSON.stringify(json));
+                                session.send('Got alert for \"' + selectedAlert.title + '\":\n');
+                                session.say(json.data[0].skim.body);
                                 next();
                             })
                             .catch(err => {
