@@ -398,6 +398,7 @@ function main() {
     bot.dialog('/help', (session, args, next) => {
         loadHelp().then((result) => {
             session.send(result);
+            session.endDialog();
         })
     });
 }
