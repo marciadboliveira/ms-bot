@@ -11,14 +11,8 @@ var config = nconf.env().argv().file({file: 'localConfig.json'});
 // Utility functions
 //=========================================================
 
-function _getEntity(entities, session){
-    if (!entities.length && session){
-        session.send('No entities found in your query!');
-        throw Error();
-    }
-    // TODO: if multiple entities are present decide which one to use- for now the first one            
-    var entityName = args[0].entity; 
-    return entityName;
+function buildArgs(entites) {
+    return entities.map(o => o.entity)
 }
 
 function _askLUIS(appId, subKey, q) {
@@ -106,6 +100,7 @@ function main() {
     //=========================================================
 
     bot.dialog('/', function (session) {
+<<<<<<< Updated upstream
         askLUIS(session.message.text)
         .then((response) => {
             switch (response.topScoringIntent.intent) {
@@ -133,7 +128,49 @@ function main() {
                     break;
             }
         });
+=======
+        let message = session.message.text;
+        if (message[0] == '/') {
+            let parts = message.split(':');
+            session.beginDialog(parts[0], parts.slice(1, parts.length));
+        } else {
+            askLUIS(message)
+            .then((response) => {
+                switch (response.topScoringIntent.intent) {
+                    case 'listAlerts':
+                        session.beginDialog("/listAlerts");
+                        break;
+                    case 'createAlert':
+                        session.beginDialog("/createAlert", buildArgs(response.entities));
+                        break;
+                    case 'deleteAlert':
+                        session.beginDialog("/deleteAlert", buildArgs(response.entities));
+                        break;
+                    case 'retrieveAlert':
+                        session.beginDialog("/retrieveAlert", buildArgs(response.entities));
+                        break;
+                    case 'getRecentNews':
+                        session.beginDialog("/getRecentNews", buildArgs(response.entities));
+                        break;
+                    case 'end':
+                        session.beginDialog('/end');
+                        break;
+                    case 'None':
+                    default :
+                        session.send("Sorry... I didn't understand")
+                        break;
+                }
+            });
+        }
+>>>>>>> Stashed changes
     });
+
+    bot.dialog('/end', [
+        (session) => {
+            session.send('Do you need anything else?');
+            session.endDialog();
+        }
+    ]);
 
     var companyName;
 
@@ -157,7 +194,7 @@ function main() {
 
     bot.dialog('/createAlert', [
         (session, args, next) => {
-            companyName = _getEntity(args, session);
+            companyName = args[0];
             next();
         },
         (session, args, next) => {
@@ -178,7 +215,7 @@ function main() {
 
     bot.dialog('/deleteAlert', [
         (session, args, next) => {
-            companyName = args[0].entity;
+            companyName = args[0];
             next();
         },
         (session, args, next) => {
@@ -212,7 +249,7 @@ function main() {
 
     bot.dialog('/retrieveAlert', [
         (session, args, next) => {
-            companyName = _getEntity;
+            companyName = args[0];
             next();
         },
         (session, args, next) => {
@@ -249,7 +286,7 @@ function main() {
 
     bot.dialog('/getRecentNews', [
         (session, args, next) => {
-            companyName = args[0].entity;
+            companyName = args[0];
             next();
         },
         (session, args, next) => {
@@ -265,22 +302,46 @@ function main() {
                });
         },
         (session, results) => {
-            session.send("Do you want me to turn that into an alert?");
-            builder.Prompts.text(session, "?");
-        },
-        (session, results) => {
-            next();
-        },
-        (session, results) => {
-            session.endDialog();
+            var msg = new builder.Message(session)
+                .textFormat(builder.TextFormat.xml)
+                .attachments([
+                    new builder.ThumbnailCard(session)
+                        .title('Do you want to set an alert?')
+                        .buttons([
+                            builder.CardAction.postBack(session, '/createAlert:' + companyName , 'Yes'),
+                            builder.CardAction.postBack(session, '/end', 'No')
+                        ]),
+                ]);
+            session.endDialog(msg);
         }
     ]);
 
     bot.dialog('/getThemes', [
         (session, args, next) => {
             getThemes()
+<<<<<<< Updated upstream
             .then((themes) => {
                 session.beginDialog('/getTheme', themes);
+=======
+            .then((result) => {
+                
+                var card = new builder.HeroCard(session)
+                    .title('BotFramework Hero Card')
+                    .subtitle('Your bots — wherever your users are talking')
+                    .text('Choose a theme')
+                    .images([
+                        builder.CardImage.create(session, 'https://sec.ch9.ms/ch9/7ff5/e07cfef0-aa3b-40bb-9baa-7c9ef8ff7ff5/buildreactionbotframework_960.jpg')
+                    ]);
+
+                var buttons = [];
+                buttons = result.map((e) => {
+                    return new builder.CardAction.imBack(session, e, titleCase(e));
+                });
+                card.buttons(buttons);
+
+                var msg = new builder.Message(session).addAttachment(card);
+                session.send(msg);
+>>>>>>> Stashed changes
             });
         },
         (session, results) => {
