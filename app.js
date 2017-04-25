@@ -229,8 +229,8 @@ function main() {
                     });
 
                     if (selectedAlert === undefined) {
-                        session.send('Failed to get alert for \"' + companyName + '\"');
-                        next();
+                        session.send('Could not find alerts for \"' + companyName + '\". Retrieving recent news instead:')
+                        session.beginDialog('/getRecentNews', [companyName]);
                     } else { 
                         api.getAlert(selectedAlert.id)
                             .then(json => {
@@ -244,8 +244,7 @@ function main() {
                     }
                 }
            ).catch(err => {
-               session.send('Failed to get alert for \"' + companyName + '\"');
-               next();
+               session.beginDialog('/getRecentNews', [companyName]);
            });
         },
         (session, results) => {
@@ -259,7 +258,6 @@ function main() {
             next();
         },
         (session, args, next) => {
-            session.send('Working on that...');
             api.getRecentNews(companyName, 3)
                 .then(json => {
                     session.send('Recent news for \"' + companyName + '\":\n' + JSON.stringify(json));
@@ -352,8 +350,3 @@ function main() {
 }
 
 main();
-
-/*askLUIS("updates on microsoft")
-.then((result) => {
-    console.log(result);
-});*/
