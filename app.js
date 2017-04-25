@@ -125,6 +125,9 @@ function main() {
                     case 'end':
                         session.beginDialog('/end');
                         break;
+                    case 'help':
+                        session.beginDialog('/help');
+                        break;
                     case 'None':
                     default :
                         session.send("Sorry... I didn't understand")
