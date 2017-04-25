@@ -168,7 +168,7 @@ function main() {
             });
         },
         (session, results) => {
-            session.endDialogWithResult(results.response);
+            session.endDialogWithResult({response:results.response});
         }
     ]);
 }
