@@ -41,12 +41,31 @@ function askLUIS(q) {
 function getThemes() {
     return new Promise((resolve, reject) => {
         // TODO: Likely to expand, perhaps pull from API
-        resolve([ "acquisitions", "investment", "partnerships" ]);
+        resolve([ "acquisitions", "investment", "partnerships", "none", "done" ]);
     });
 }
 
 function titleCase(str) {
     return str.replace(/\w\S*/g, function(txt){return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();});
+}
+
+function createThemeCard(session, themes) {
+
+    var card = new builder.HeroCard(session)
+    .title('BotFramework Hero Card')
+    .subtitle('Your bots — wherever your users are talking')
+    .text('Choose a theme')
+    .images([
+        builder.CardImage.create(session, 'https://sec.ch9.ms/ch9/7ff5/e07cfef0-aa3b-40bb-9baa-7c9ef8ff7ff5/buildreactionbotframework_960.jpg')
+    ]);
+
+    var buttons = [];
+    buttons = themes.map((e) => {
+        return new builder.CardAction.imBack(session, e, titleCase(e));
+    });
+    card.buttons(buttons);
+
+    return card;
 }
 
 //=========================================================
@@ -80,7 +99,8 @@ function main() {
         .then((response) => {
             switch (response.topScoringIntent.intent) {
                 case 'listAlerts':
-                    session.beginDialog("/listAlerts");
+                    session.beginDialog("/getThemes");
+                    //session.beginDialog("/listAlerts");
                     break;
                 case 'createAlert':
                     session.beginDialog("/createAlert", response.entities);
@@ -243,31 +263,61 @@ function main() {
         }
     ]);
 
-    bot.dialog('/getTheme', [
+    bot.dialog('/getThemes', [
         (session, args, next) => {
             getThemes()
-            .then((result) => {
-                
-                var card = new builder.HeroCard(session)
-                .title('BotFramework Hero Card')
-                .subtitle('Your bots — wherever your users are talking')
-                .text('Choose a theme')
-                .images([
-                    builder.CardImage.create(session, 'https://sec.ch9.ms/ch9/7ff5/e07cfef0-aa3b-40bb-9baa-7c9ef8ff7ff5/buildreactionbotframework_960.jpg')
-                ]);
-
-                var buttons = [];
-                buttons = result.map((e) => {
-                    return new builder.CardAction.imBack(session, e, titleCase(e));
-                });
-                card.buttons(buttons);
-
-                var msg = new builder.Message(session).addAttachment(card);
-                session.send(msg);
+            .then((themes) => {
+                session.beginDialog('/getTheme', themes);
             });
         },
         (session, results) => {
-            session.endDialogWithResult({response:results.response});
+            session.endDialogWithResult({response:results});
+        }
+    ]);
+
+    bot.dialog('/getTheme', [
+        (session, themes, next) => {
+            var card = createThemeCard(session, themes);
+            var msg = new builder.Message(session).addAttachment(card);
+            builder.Prompts.text(session, msg);
+        },
+        (session, result) => {
+            // User has provided a response
+            var chosenTheme = result.response;
+
+            // Pull previous choices from persistent storage
+            var chosenThemes = session.privateConversationData.chosenThemes;
+            if (!chosenThemes) {
+                chosenThemes = [];
+            }
+
+            if (chosenTheme == 'done') {
+                // Selection complete
+                session.privateConversationData.chosenThemes = null;
+                session.endDialogWithResult({response:chosenThemes})
+            }
+            else {
+
+                getThemes()
+                .then(themes => {
+
+                    // Validate response
+                    if (themes.indexOf(chosenTheme) != -1) {
+                        chosenThemes.push(result.response);
+                    }
+                    else {
+                        session.send("Please choose a valid theme or 'Done' when finished");
+                    }
+
+                    // Filter out already chosen themes
+                    var remainingThemes = themes.filter((e) => {
+                        return (chosenThemes.indexOf(e) == -1);
+                    });
+                    
+                    session.privateConversationData.chosenThemes = chosenThemes;
+                    session.replaceDialog("/getTheme", remainingThemes)
+                });
+            }
         }
     ]);
 }
