@@ -87,8 +87,8 @@ function main() {
       
     // Create chat bot
     var connector = new builder.ChatConnector({
-      appId: process.env.MICROSOFT_APP_ID,
-      appPassword: process.env.MICROSOFT_APP_PASSWORD
+      appId: config.get('MICROSOFT_APP_ID'),
+      appPassword: config.get('MICROSOFT_APP_PASSWORD')
     });
 
     //var connector = new builder.ConsoleConnector().listen()
