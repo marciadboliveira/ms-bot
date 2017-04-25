@@ -32,7 +32,8 @@ let _intents = {
     listAlerts: /list alerts/,
     createAlert: /create alert for (.+)/,
     getAlert: /get alert for (.+)/,
-    deleteAlert: /delete alert for (.+)/
+    deleteAlert: /delete alert for (.+)/,
+    getRecentNews: /get recent news for (.+)/
 }
 
 function askRegex(q) {
@@ -227,6 +228,31 @@ function main() {
                session.send('Failed to get alert for \"' + companyName + '\"');
                next();
            });
+        },
+        (session, results) => {
+            session.endDialog();
+        }
+    ]);
+
+    bot.dialog('/getRecentNews', [
+        (session, args, next) => {
+            companyName = args[0].entity;
+            next();
+        },
+        (session, args, next) => {
+            session.send('Working on that...');
+            api.getRecentNews(companyName, 3)
+                .then(res => {
+                    return res.json();
+                })
+                .then((json) => {
+                    session.send('Recent news for \"' + companyName + '\":\n' + JSON.stringify(json));
+                    next();
+                })
+               .catch(err => {
+                    session.send('Failed to get recent news for \"' + companyName + '\"');
+                    next();
+               });
         },
         (session, results) => {
             session.endDialog();
