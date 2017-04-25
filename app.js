@@ -150,8 +150,13 @@ function main() {
     bot.dialog('/listAlerts', [
         (session, args, next) => {
             api.listAlerts()
-                .then(json => {
-                    session.send('Available alerts:\n' + JSON.stringify(json));
+                .then(alerts => {
+                    let titles = alerts.map(alert => alert.title);                    
+                    let text = 'Here are the alerts you have:\n';
+                    for (let i = 0; i < titles.length; i++) {
+                        text += (i+1) + '. ' + titles[i] + '\n';
+                    }
+                    session.send(text);
                     next();
                 })
                 .catch(err => {
