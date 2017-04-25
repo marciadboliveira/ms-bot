@@ -198,7 +198,7 @@ function main() {
                     });
 
                     if (selectedAlert === undefined) {
-                        session.send('Failed to delete alert for \"' + companyName + '\"');
+                        session.send('There is no alert set up for \"' + companyName + '\"');
                         next();
                     } else { 
                         api.deleteAlert(selectedAlert.id)
