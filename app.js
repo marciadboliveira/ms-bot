@@ -10,6 +10,16 @@ var config = nconf.env().argv().file({file: 'localConfig.json'});
 // Utility functions
 //=========================================================
 
+function _getEntity(entities, session){
+    if (!entities.length && session){
+        session.send('No entities found in your query!');
+        throw Error();
+    }
+    // TODO: if multiple entities are present decide which one to use- for now the first one            
+    var entityName = args[0].entity; 
+    return entityName;
+}
+
 function _askLUIS(appId, subKey, q) {
     var uri = `https://westus.api.cognitive.microsoft.com/luis/v2.0/apps/${appId}?subscription-key=${subKey}&verbose=true&q=${q}`;
 
@@ -26,40 +36,6 @@ function _askLUIS(appId, subKey, q) {
 
 function askLUIS(q) {
     return _askLUIS(config.get("LUIS_APP_ID"), config.get("LUIS_SUBSCRIPTION_KEY"), q);
-}
-
-let _intents = {
-    listAlerts: /list alerts/,
-    createAlert: /create alert for (.+)/,
-    getAlert: /get alert for (.+)/,
-    deleteAlert: /delete alert for (.+)/,
-    getRecentNews: /get recent news for (.+)/
-}
-
-function askRegex(q) {
-    var match;
-    var intent = Object.keys(_intents).find(k => {
-        var regex = _intents[k];
-        return ((match = regex.exec(q)) != null);
-    });
-
-    return new Promise((resolve, reject) => {
-        var _intent = 'None';
-        if (intent) {
-            _intent = intent;
-        }
-        resolve({
-            topScoringIntent : {
-                intent : _intent
-            },
-            entities : [
-                {
-                    entity : match[1],
-                    type : "companyName"
-                }
-            ]
-        });
-    });
 }
 
 function getThemes() {
@@ -96,7 +72,7 @@ function main() {
     //=========================================================
 
     bot.dialog('/', function (session) {
-        askRegex(session.message.text)
+        askLUIS(session.message.text)
         .then((response) => {
             switch (response.topScoringIntent.intent) {
                 case 'listAlerts':
@@ -108,8 +84,8 @@ function main() {
                 case 'deleteAlert':
                     session.beginDialog("/deleteAlert", response.entities);
                     break;
-                case 'getAlert':
-                    session.beginDialog("/getAlert", response.entities);
+                case 'retrieveAlert':
+                    session.beginDialog("/retrieveAlert", response.entities);
                     break;
                 case 'getRecentNews':
                     session.beginDialog("/getRecentNews", response.entities);
@@ -144,7 +120,7 @@ function main() {
 
     bot.dialog('/createAlert', [
         (session, args, next) => {
-            companyName = args[0].entity;
+            companyName = _getEntity(args, session);
             next();
         },
         (session, args, next) => {
@@ -181,7 +157,7 @@ function main() {
                     } else { 
                         api.deleteAlert(selectedAlert.id)
                             .then(json => {
-                                session.send('Delete alert for \"' + selectedAlert.title + '\"');
+                                session.send('Deleted alert for \"' + selectedAlert.title + '\"');
                                 next();
                             })
                             .catch(err => {
@@ -197,9 +173,9 @@ function main() {
         }
     ]);
 
-    bot.dialog('/getAlert', [
+    bot.dialog('/retrieveAlert', [
         (session, args, next) => {
-            companyName = args[0].entity;
+            companyName = _getEntity;
             next();
         },
         (session, args, next) => {
