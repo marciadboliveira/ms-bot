@@ -237,7 +237,8 @@ function main() {
                     } else { 
                         api.getAlert(selectedAlert.id)
                             .then(json => {
-                                session.send('Got alert for \"' + selectedAlert.title + '\":\n' + JSON.stringify(json));
+                                let skims = json.slice(0, 5);
+                                session.send('Got alert for \"' + selectedAlert.title + '\":\n' + JSON.stringify(skims));
                                 next();
                             })
                             .catch(err => {
