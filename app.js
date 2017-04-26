@@ -11,10 +11,9 @@ var config = nconf.env().argv().file({file: 'localConfig.json'});
 // Utility functions
 //=========================================================
 
-function _getEntity(entities, session){
-    if (!entities.length && session){
-        session.send('No entities found in your query!');
-        throw Error();
+function _getEntity(entities, session) {
+    if (!entities || !entities.length) {
+        return null;
     }
     // TODO: if multiple entities are present decide which one to use- for now the first one            
     var entityName = entities[0]; 
@@ -46,7 +45,7 @@ function askLUIS(q) {
 function getThemes() {
     return new Promise((resolve, reject) => {
         // TODO: Likely to expand, perhaps pull from API
-        resolve([ "acquisitions", "investment", "partnerships", "none", "done" ]);
+        resolve([ "general", "acquisitions", "investment", "partnerships", "none", "done" ]);
     });
 }
 
@@ -110,6 +109,11 @@ function main() {
 
     bot.dialog('/', function (session) {
         let message = session.message.text;
+        if (!message || message.length == 0) {
+            session.send("Waiting for your command");
+            session.endDialog();
+            return;
+        }
         if (message[0] == '/') {
             let parts = message.split(':');
             session.beginDialog(parts[0], parts.slice(1, parts.length));
@@ -180,6 +184,17 @@ function main() {
             next();
         },
         (session, args, next) => {
+            session.beginDialog('/getThemes');
+        },
+        (session, args, next) => {
+
+            // Persist the themes for this alert
+            if (!session.privateConversationData.alerts) {
+                session.privateConversationData.alerts = {};
+            }
+            session.privateConversationData.alerts[companyName] = {};
+            session.privateConversationData.alerts[companyName].themes = args.response;
+
             api.createAlert(companyName, [companyName])
                 .then(json => {
                     session.send('Created alert for \"' + json.title + '\"');
@@ -213,6 +228,7 @@ function main() {
                     } else { 
                         api.deleteAlert(selectedAlert.id)
                             .then(json => {
+                                delete session.privateConversationData.alerts[companyName];
                                 session.send('Deleted alert for \"' + selectedAlert.title + '\"');
                                 next();
                             })
@@ -244,11 +260,24 @@ function main() {
                     if (selectedAlert === undefined) {
                         session.send('Could not find alerts for \"' + companyName + '\". Retrieving recent news instead:')
                         session.beginDialog('/getRecentNews', [companyName]);
-                    } else { 
-                        api.getAlert(selectedAlert.id)
+                    } else {
+                        var themes = session.privateConversationData.alerts[companyName].themes;
+                        if (!themes) {
+                            themes = [];
+                        }
+
+                        api.getAlert(selectedAlert.id, themes)
                             .then(json => {
-                                //session.send('Got alert for \"' + selectedAlert.title + '\":\n' + JSON.stringify(json));
-                                session.say(json.data[0].skim.body, json.data[0].skim.body.split('\n')[0]);
+                                if (json.data.length > 0) {
+                                    //session.send('Got alert for \"' + selectedAlert.title + '\":\n' + JSON.stringify(json));
+                                    session.say(json.data[0].skim.body, json.data[0].skim.body.split('\n')[0]);
+                                }
+                                else {
+                                    session.say(
+                                        `No new updates for ${companyName} (topics: ${themes})`, 
+                                        `No new updates for ${companyName}`
+                                    );
+                                }
                                 next();
                             })
                             .catch(err => {
@@ -305,7 +334,7 @@ function main() {
             });
         },
         (session, results) => {
-            session.endDialogWithResult({response:results});
+            session.endDialogWithResult(results);
         }
     ]);
 
