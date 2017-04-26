@@ -12,6 +12,7 @@
   "license": "UNLICENSED",
   "dependencies": {
     "botbuilder": "^3.8.0-beta6",
+    "guid": "0.0.12",
     "nconf": "^0.8.4",
     "node-fetch": "^1.6.3",
     "request": "^2.81.0",

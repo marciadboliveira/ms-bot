@@ -428,6 +428,21 @@ function main() {
             session.endDialog();
         })
     });
+
+    bot.dialog('/readSkim',[
+        (session, args, next) => {
+            var uuid = args[0];
+            if ('skims' in session.privateConversationData && 
+                uuid in session.privateConversationData.skims) {
+                var body = session.privateConversationData.skims[uuid];
+                session.say(body, body);
+            }
+            else {
+                session.say('Sorry, can\'t find that skim');
+            }
+            session.endDialog();
+        }
+    ]);
 }
 
 main();
