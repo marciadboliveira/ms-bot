@@ -12,7 +12,7 @@ var config = nconf.env().argv().file({file: 'localConfig.json'});
 // Utility functions
 //=========================================================
 
-function buildArgs(entites) {
+function buildArgs(entities) {
     return entities.map(o => o.entity)
 }
 
