@@ -70,6 +70,12 @@ function getRecentNews(query, count) {
     }).then(res => res.json());
 }
 
+function getTimeExpressions(text){
+    return fetch(config.get('STANFORD_URL'), option={
+        'method': 'POST',
+        'body': JSON.stringify({'text': text})
+    }).then(res => res.json());
+}
 
 // listAlerts()
 //     .then(json => console.log(json))
@@ -105,4 +111,5 @@ module.exports = {
     'getAlert': getAlert,
     'deleteAlert': deleteAlert,
     'getRecentNews': getRecentNews,
+    'getTimeExpressions': getTimeExpressions
 };
