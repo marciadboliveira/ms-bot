@@ -37,7 +37,7 @@ function askLUIS(q) {
 function getThemes() {
     return new Promise((resolve, reject) => {
         // TODO: Likely to expand, perhaps pull from API
-        resolve([ "general", "acquisitions", "investment", "partnerships", "none", "done" ]);
+        resolve([ "general", "acquisitions", "investments", "partnerships", "none", "done" ]);
     });
 }
 

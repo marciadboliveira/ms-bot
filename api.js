@@ -35,7 +35,7 @@ function createAlert(title, keyTerms) {
 }
 
 /*
- topics: should be a comma separated list of [investments, partnerships, acquisitions, personnel]
+ topics: should be an array of strings: "acquisitions", "investments", "partnerships" or "personnel"
  since: ISO date time string
  */
 function getAlert(alert_id, topics, since) {
