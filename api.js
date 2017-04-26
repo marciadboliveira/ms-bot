@@ -39,17 +39,16 @@ function createAlert(title, keyTerms) {
  since: ISO date time string
  */
 function getAlert(alert_id, topics, since) {
-    var body = {};
-    if (topics !== undefined) {
-        body.topics = topics.join(',');
+    var params = {};
+    if (topics !== undefined && topics.length) {
+        params.topics = topics.join(',')
     }
     if (since !== undefined) {
-        body.since = since;
+        params.since = since
     }
-    return fetch(BASE_URL + '/alerts/' + alert_id, option={
+    return fetch(BASE_URL + '/alerts/' + alert_id + '?' + querystring.stringify(params), option={
         'method': 'GET',
-        'headers': headers,
-        'body': JSON.stringify(body)
+        'headers': headers
     }).then(res => res.json());
 }
 

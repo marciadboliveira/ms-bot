@@ -390,6 +390,8 @@ function main() {
                     }
 
                     // Filter out already chosen themes
+                    // TODO? rename None => clear all filters
+                    // TODO? rename General => any (at least one) => set all filters
                     var remainingThemes = themes.filter((e) => {
                         return (chosenThemes.indexOf(e) == -1);
                     });
