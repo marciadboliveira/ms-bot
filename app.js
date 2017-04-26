@@ -267,9 +267,13 @@ function main() {
                         session.send('Could not find alerts for \"' + companyName + '\". Retrieving recent news instead:')
                         session.beginDialog('/getRecentNews', [companyName]);
                     } else {
-                        var themes = session.privateConversationData.alerts[companyName].themes;
-                        if (!themes) {
-                            themes = [];
+
+                        var themes = [];
+                        // TODO: Wrap up persistent store handling
+                        if (session.privateConversationData.alerts) {
+                            if (companyName in session.privateConversationData.alerts) {
+                                themes = session.privateConversationData.alerts[companyName].themes;
+                            }
                         }
 
                         api.getAlert(selectedAlert.id, themes)

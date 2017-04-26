@@ -1,5 +1,5 @@
+var url = require('url');
 var builder = require('botbuilder');
-
 
 function createSkimCard(skim, session) {
     let card = new builder.HeroCard(session)
@@ -8,14 +8,18 @@ function createSkimCard(skim, session) {
     
     if (skim.uri != undefined) {
         // TODO: why some skims don't have an URL? Are they from recent news only?
-        card.buttons([
+
+       card.buttons([
             builder.CardAction.openUrl(session, skim.uri, 'Open in browser')
         ]); 
     }
 
     if (skim.images.length > 0) {
+        var uri = url.parse(skim.images[0]);
+        uri.protocol = 'http:'; // Bot SDK seems to have trouble rendering https links 
+
         card.images([
-            builder.CardImage.create(session, skim.images[0])
+            builder.CardImage.create(session, uri.format())
         ]);
     }
 
