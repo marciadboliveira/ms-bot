@@ -1,8 +1,9 @@
+var fs = require('fs')
+var moment = require('moment')
 var nconf = require('nconf');
 var request = require('request');
 var restify = require('restify');
 var builder = require('botbuilder');
-var fs = require('fs')
 var api = require('./api.js');
 var cards = require('./cards.js')
 
@@ -36,8 +37,8 @@ function askLUIS(q) {
 
 function getThemes() {
     return new Promise((resolve, reject) => {
-        // TODO: Likely to expand, perhaps pull from API
-        resolve([ "general", "acquisitions", "investments", "partnerships", "none", "done" ]);
+        // TODO: Likely to expand, perhaps pull from API; then add general list actions
+        resolve(["acquisitions", "investments", "partnerships"].concat("at least one", "no theme", "done"));
     });
 }
 
@@ -92,7 +93,11 @@ function handleIntent(session, msg, defaultResponse, cancelPrevious) {
                 session.beginDialog("/deleteAlert", buildArgs(response.entities));
                 break;
             case 'retrieveAlert':
-                session.beginDialog("/retrieveAlert", buildArgs(response.entities));
+                var retrieveParams = {
+                    entities: buildArgs(response.entities),
+                    query: response.query
+                }
+                session.beginDialog("/retrieveAlert", retrieveParams);
                 break;
             case 'getRecentNews':
                 session.beginDialog("/getRecentNews", buildArgs(response.entities));
@@ -253,8 +258,20 @@ function main() {
 
     bot.dialog('/retrieveAlert', [
         (session, args, next) => {
-            companyName = args[0];
-            next();
+            companyName = args.entities[0];
+            next(args);
+        },
+        (session, args, next) => {
+            api.getTimeExpressions(args.query).then((times) => {
+                if (times.length > 0){
+                    // TODO work out how to deal with multiple times
+                    since = moment(times[0].resolved).unix();
+                    console.log('json', times[0].resolved);
+                    console.log('parsed', moment(times[0].resolved));
+                    console.log('parsed unix', since);
+                }
+                next(args);
+            });  
         },
         (session, args, next) => {
             api.listAlerts().then(
@@ -267,7 +284,6 @@ function main() {
                         session.send('Could not find alerts for \"' + companyName + '\". Retrieving recent news instead:')
                         session.beginDialog('/getRecentNews', [companyName]);
                     } else {
-
                         var themes = [];
                         // TODO: Wrap up persistent store handling
                         if (session.privateConversationData.alerts) {
@@ -275,8 +291,7 @@ function main() {
                                 themes = session.privateConversationData.alerts[companyName].themes;
                             }
                         }
-
-                        api.getAlert(selectedAlert.id, themes)
+                        api.getAlert(selectedAlert.id, themes, since)
                             .then(json => {
                                 if (json.data.length > 0) {
                                     // session.say(json.data[0].skim.body, json.data[0].skim.body.split('\n')[0]);
@@ -377,16 +392,22 @@ function main() {
                 getThemes()
                 .then(themes => {
 
-                    // Validate response
-                    if (themes.indexOf(chosenTheme) != -1) {
-                        chosenThemes.push(result.response);
-                    }
-                    else {
-                        // If not a valid response, see if it's a top-level intent,
-                        // if cancelPrevious (final parm) == false then top level intent is handled as a subdialog
-                        // of the current one, if true then dialog stack is blown away
-                        handleIntent(session, chosenTheme, "Please choose a valid theme or 'Done' when finished", true);
-                        return;
+                    if (chosenTheme == 'no theme') {
+                        chosenThemes = [];
+                    } else if (chosenTheme == 'at least one') {
+                        chosenThemes = themes.slice(0, -3);
+                    } else {
+                        // Validate response
+                        if (themes.indexOf(chosenTheme) != -1) {
+                            chosenThemes.push(result.response);
+                        }
+                        else {
+                            // If not a valid response, see if it's a top-level intent,
+                            // if cancelPrevious (final parm) == false then top level intent is handled as a subdialog
+                            // of the current one, if true then dialog stack is blown away
+                            handleIntent(session, chosenTheme, "Please choose a valid theme or 'Done' when finished", true);
+                            return;
+                        }
                     }
 
                     // Filter out already chosen themes

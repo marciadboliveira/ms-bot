@@ -39,17 +39,16 @@ function createAlert(title, keyTerms) {
  since: ISO date time string
  */
 function getAlert(alert_id, topics, since) {
-    var body = {};
-    if (topics !== undefined) {
-        body.topics = topics.join(',');
+    var params = {};
+    if (topics !== undefined && topics.length) {
+        params.topics = topics.join(',')
     }
     if (since !== undefined) {
-        body.since = since;
+        params.since = since
     }
-    return fetch(BASE_URL + '/alerts/' + alert_id, option={
+    return fetch(BASE_URL + '/alerts/' + alert_id + '?' + querystring.stringify(params), option={
         'method': 'GET',
-        'headers': headers,
-        'body': JSON.stringify(body)
+        'headers': headers
     }).then(res => res.json());
 }
 
@@ -71,34 +70,12 @@ function getRecentNews(query, count) {
     }).then(res => res.json());
 }
 
-
-// listAlerts()
-//     .then(json => console.log(json))
-//     .catch(err => console.log(err));
-
-// createAlert('microsoft', ['microsoft', 'bot', 'framework'])
-//     .then(json => console.log(json))
-//     .catch(err => console.log(err));
-
-// deleteAlert('58fe5e9bc363060001b60d6a')
-//     .then(json => console.log(json))
-//     .catch(err => console.log(err));
-
-// getAlert('58fe4ba8c363060001b60d69')
-//     .then(json => console.log(json))
-//     .catch(err => console.log(err));
-
-// getAlert('58fe4ba8c363060001b60d69', ['acquisitions', 'partnerships'])
-//     .then(json => console.log(json))
-//     .catch(err => console.log(err));
-
-// listAlerts()
-//     .then(json => console.log(json))
-//     .catch(err => console.log(err));
-
-// getRecentNews('microsoft bot framework', 3)
-//     .then(json => console.log(json))
-//     .catch(err => console.log(err));
+function getTimeExpressions(text){
+    return fetch(config.get('STANFORD_URL'), option={
+        'method': 'POST',
+        'body': JSON.stringify({'text': text})
+    }).then(res => res.json());
+}
 
 module.exports = {
     'listAlerts': listAlerts,
@@ -106,4 +83,5 @@ module.exports = {
     'getAlert': getAlert,
     'deleteAlert': deleteAlert,
     'getRecentNews': getRecentNews,
+    'getTimeExpressions': getTimeExpressions
 };

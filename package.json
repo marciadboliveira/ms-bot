@@ -16,6 +16,7 @@
     "nconf": "^0.8.4",
     "node-fetch": "^1.6.3",
     "request": "^2.81.0",
-    "restify": "^4.3.0"
+    "restify": "^4.3.0",
+    "moment": "^2.18.1"
   }
 }
