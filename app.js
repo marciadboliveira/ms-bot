@@ -2,23 +2,15 @@ var nconf = require('nconf');
 var request = require('request');
 var restify = require('restify');
 var builder = require('botbuilder');
-var api = require('./api.js');
 var fs = require('fs')
+var api = require('./api.js');
+var cards = require('./cards.js')
 
 var config = nconf.env().argv().file({file: 'localConfig.json'});
 
 //=========================================================
 // Utility functions
 //=========================================================
-
-function _getEntity(entities, session) {
-    if (!entities || !entities.length) {
-        return null;
-    }
-    // TODO: if multiple entities are present decide which one to use- for now the first one            
-    var entityName = entities[0]; 
-    return entityName;
-}
 
 function buildArgs(entities) {
     return entities.map(o => o.entity)
@@ -143,8 +135,8 @@ function main() {
                         session.beginDialog('/help');
                         break;
                     case 'None':
-                    default :
-                        session.send("Sorry... I didn't understand")
+                    default:
+                        session.send("Sorry... I didn't understand that command.")
                         break;
                 }
             });
@@ -163,8 +155,13 @@ function main() {
     bot.dialog('/listAlerts', [
         (session, args, next) => {
             api.listAlerts()
-                .then(json => {
-                    session.send('Available alerts:\n' + JSON.stringify(json));
+                .then(alerts => {
+                    let titles = alerts.map(alert => alert.title);                    
+                    let text = 'Here are the alerts you have:\n';
+                    for (let i = 0; i < titles.length; i++) {
+                        text += (i+1) + '. ' + titles[i] + '\n';
+                    }
+                    session.send(text);
                     next();
                 })
                 .catch(err => {
@@ -247,7 +244,7 @@ function main() {
 
     bot.dialog('/retrieveAlert', [
         (session, args, next) => {
-            companyName = _getEntity(args, session);
+            companyName = args[0];
             next();
         },
         (session, args, next) => {
@@ -269,8 +266,10 @@ function main() {
                         api.getAlert(selectedAlert.id, themes)
                             .then(json => {
                                 if (json.data.length > 0) {
-                                    //session.send('Got alert for \"' + selectedAlert.title + '\":\n' + JSON.stringify(json));
-                                    session.say(json.data[0].skim.body, json.data[0].skim.body.split('\n')[0]);
+                                    // session.say(json.data[0].skim.body, json.data[0].skim.body.split('\n')[0]);
+                                    let data = json.data.slice(0, 3);
+                                    let skims = data.map(d => d.skim);
+                                    cards.sendSkimsCards(skims, session);
                                 }
                                 else {
                                     session.say(
@@ -302,8 +301,9 @@ function main() {
         },
         (session, args, next) => {
             api.getRecentNews(companyName, 3)
-                .then(json => {
-                    session.send('Recent news for \"' + companyName + '\":\n' + JSON.stringify(json));
+                .then(skims => {
+                    session.send('Here are the recent news for \"' + companyName + '\":');
+                    cards.sendSkimsCards(skims, session);
                     next();
                 })
                .catch(err => {
@@ -316,7 +316,7 @@ function main() {
                 .textFormat(builder.TextFormat.xml)
                 .attachments([
                     new builder.ThumbnailCard(session)
-                        .title('Do you want to set an alert?')
+                        .title('Do you want to set an alert for \"' + companyName + '\"?')
                         .buttons([
                             builder.CardAction.postBack(session, '/createAlert:' + companyName , 'Yes'),
                             builder.CardAction.postBack(session, '/end', 'No')
