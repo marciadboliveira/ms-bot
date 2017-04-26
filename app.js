@@ -37,8 +37,8 @@ function askLUIS(q) {
 
 function getThemes() {
     return new Promise((resolve, reject) => {
-        // TODO: Likely to expand, perhaps pull from API
-        resolve([ "general", "acquisitions", "investments", "partnerships", "none", "done" ]);
+        // TODO: Likely to expand, perhaps pull from API; then add general list actions
+        resolve(["acquisitions", "investments", "partnerships"].concat("at least one", "no theme", "done"));
     });
 }
 
@@ -392,21 +392,25 @@ function main() {
                 getThemes()
                 .then(themes => {
 
-                    // Validate response
-                    if (themes.indexOf(chosenTheme) != -1) {
-                        chosenThemes.push(result.response);
-                    }
-                    else {
-                        // If not a valid response, see if it's a top-level intent,
-                        // if cancelPrevious (final parm) == false then top level intent is handled as a subdialog
-                        // of the current one, if true then dialog stack is blown away
-                        handleIntent(session, chosenTheme, "Please choose a valid theme or 'Done' when finished", true);
-                        return;
+                    if (chosenTheme == 'no theme') {
+                        chosenThemes = [];
+                    } else if (chosenTheme == 'at least one') {
+                        chosenThemes = themes.slice(0, -3);
+                    } else {
+                        // Validate response
+                        if (themes.indexOf(chosenTheme) != -1) {
+                            chosenThemes.push(result.response);
+                        }
+                        else {
+                            // If not a valid response, see if it's a top-level intent,
+                            // if cancelPrevious (final parm) == false then top level intent is handled as a subdialog
+                            // of the current one, if true then dialog stack is blown away
+                            handleIntent(session, chosenTheme, "Please choose a valid theme or 'Done' when finished", true);
+                            return;
+                        }
                     }
 
                     // Filter out already chosen themes
-                    // TODO? rename None => clear all filters
-                    // TODO? rename General => any (at least one) => set all filters
                     var remainingThemes = themes.filter((e) => {
                         return (chosenThemes.indexOf(e) == -1);
                     });
