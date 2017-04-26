@@ -73,6 +73,44 @@ function loadHelp() {
     })
 }
 
+function handleIntent(session, msg, defaultResponse, cancelPrevious) {
+    askLUIS(msg)
+    .then((response) => {
+        if (response.topScoringIntent.intent != 'None') {
+            if (cancelPrevious) {
+                session.cancelDialog(0);
+            }
+        }
+        switch (response.topScoringIntent.intent) {
+            case 'listAlerts':
+                session.beginDialog("/listAlerts");
+                break;
+            case 'createAlert':
+                session.beginDialog("/createAlert", buildArgs(response.entities));
+                break;
+            case 'deleteAlert':
+                session.beginDialog("/deleteAlert", buildArgs(response.entities));
+                break;
+            case 'retrieveAlert':
+                session.beginDialog("/retrieveAlert", buildArgs(response.entities));
+                break;
+            case 'getRecentNews':
+                session.beginDialog("/getRecentNews", buildArgs(response.entities));
+                break;
+            case 'end':
+                session.beginDialog('/end');
+                break;
+            case 'help':
+                session.beginDialog('/help');
+                break;
+            case 'None':
+            default:
+                session.send(defaultResponse);
+                break;
+        }
+    });
+}
+
 //=========================================================
 // Bot Setup
 //=========================================================
@@ -110,36 +148,7 @@ function main() {
             let parts = message.split(':');
             session.beginDialog(parts[0], parts.slice(1, parts.length));
         } else {
-            askLUIS(message)
-            .then((response) => {
-                switch (response.topScoringIntent.intent) {
-                    case 'listAlerts':
-                        session.beginDialog("/listAlerts");
-                        break;
-                    case 'createAlert':
-                        session.beginDialog("/createAlert", buildArgs(response.entities));
-                        break;
-                    case 'deleteAlert':
-                        session.beginDialog("/deleteAlert", buildArgs(response.entities));
-                        break;
-                    case 'retrieveAlert':
-                        session.beginDialog("/retrieveAlert", buildArgs(response.entities));
-                        break;
-                    case 'getRecentNews':
-                        session.beginDialog("/getRecentNews", buildArgs(response.entities));
-                        break;
-                    case 'end':
-                        session.beginDialog('/end');
-                        break;
-                    case 'help':
-                        session.beginDialog('/help');
-                        break;
-                    case 'None':
-                    default:
-                        session.send("Sorry... I didn't understand that command.")
-                        break;
-                }
-            });
+            handleIntent(session, message, "I'm sorry I didn't understand that");
         }
     });
 
@@ -369,7 +378,11 @@ function main() {
                         chosenThemes.push(result.response);
                     }
                     else {
-                        session.send("Please choose a valid theme or 'Done' when finished");
+                        // If not a valid response, see if it's a top-level intent,
+                        // if cancelPrevious (final parm) == false then top level intent is handled as a subdialog
+                        // of the current one, if true then dialog stack is blown away
+                        handleIntent(session, chosenTheme, "Please choose a valid theme or 'Done' when finished", true);
+                        return;
                     }
 
                     // Filter out already chosen themes
