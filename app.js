@@ -401,6 +401,27 @@ function main() {
         }
     ]);
 
+    bot.dialog('/getFrequency', [
+        (session, args, next) => {
+            let message = new builder.Message(session)
+                .textFormat(builder.TextFormat.xml)
+                .attachments([
+                    new builder.ThumbnailCard(session)
+                        .title('What is the frequency you want to set the alert?')
+                        .buttons([
+                            builder.CardAction.imBack(session, 'Daily', 'Daily'),
+                            builder.CardAction.imBack(session, 'Weekly', 'Weekly'),
+                            builder.CardAction.imBack(session, 'ASAP', 'ASAP')
+                        ])
+                ]);
+            builder.Prompts.text(session, message);
+        },
+        (session, result) => {
+            let frequency = result.response;
+            session.endDialogWithResult({response: frequency});
+        }
+    ]);
+
     bot.dialog('/help', (session, args, next) => {
         loadHelp().then((result) => {
             session.send(result);
