@@ -77,34 +77,6 @@ function getTimeExpressions(text){
     }).then(res => res.json());
 }
 
-// listAlerts()
-//     .then(json => console.log(json))
-//     .catch(err => console.log(err));
-
-// createAlert('microsoft', ['microsoft', 'bot', 'framework'])
-//     .then(json => console.log(json))
-//     .catch(err => console.log(err));
-
-// deleteAlert('58fe5e9bc363060001b60d6a')
-//     .then(json => console.log(json))
-//     .catch(err => console.log(err));
-
-// getAlert('58fe4ba8c363060001b60d69')
-//     .then(json => console.log(json))
-//     .catch(err => console.log(err));
-
-// getAlert('58fe4ba8c363060001b60d69', ['acquisitions', 'partnerships'])
-//     .then(json => console.log(json))
-//     .catch(err => console.log(err));
-
-// listAlerts()
-//     .then(json => console.log(json))
-//     .catch(err => console.log(err));
-
-// getRecentNews('microsoft bot framework', 3)
-//     .then(json => console.log(json))
-//     .catch(err => console.log(err));
-
 module.exports = {
     'listAlerts': listAlerts,
     'createAlert': createAlert,
