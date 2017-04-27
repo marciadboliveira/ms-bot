@@ -204,10 +204,15 @@ function main() {
 
     bot.dialog('/createAlert', [
         (session, args, next) => {
-            companyName = args[0];
-            next();
+            if (!args.length) { // no entity mentioned
+                builder.Prompts.text(session, 'Which company are you interested in?');
+                 //will call next when user types something in
+            } else { 
+                next({ response: args[0] });  //make compatible with what Prompts returns
+            }
         },
         (session, args, next) => {
+            companyName = args.response;
             session.beginDialog('/getThemes');
         },
         (session, args, next) => {
