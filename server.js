@@ -117,10 +117,17 @@ function handleIntent(session, msg, defaultResponse, cancelPrevious) {
 }
 
 function proactiveMessage(bot, toAddress, msg) {
-
-   var message = new builder.Message().address(toAddress).text(msg);
+    // Send a message at any time
+    var message = new builder.Message().address(toAddress).text(msg);
     bot.send(message);
 }
+
+function proactiveDialog(bot, toAddress, msg) {
+    // Start a dialog at any time - Be aware, you might interrupt an existing conversation
+   var message = new builder.Message().address(toAddress).text(msg);
+   bot.send(message);
+}
+
 
 //=========================================================
 // Bot Setup
@@ -487,6 +494,8 @@ function main() {
             setTimeout(() => {
                 proactiveMessage(bot, session.message.address, "I'm a proactive message");
             }, 5000);
+
+            session.endDialog();
         }
     ]);
 }
