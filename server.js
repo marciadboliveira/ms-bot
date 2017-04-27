@@ -204,10 +204,15 @@ function main() {
 
     bot.dialog('/createAlert', [
         (session, args, next) => {
-            companyName = args[0];
-            next();
+            if (!args.length) { // no entity mentioned
+                builder.Prompts.text(session, 'Which company are you interested in?');
+                 //will call next when user types something in
+            } else { 
+                next({ response: args[0] });  //make compatible with what Prompts returns
+            }
         },
         (session, args, next) => {
+            companyName = args.response;
             session.beginDialog('/getThemes');
         },
         (session, args, next) => {
@@ -236,14 +241,18 @@ function main() {
 
     bot.dialog('/deleteAlert', [
         (session, args, next) => {
-            companyName = args[0];
-            next();
+            if (!args.length) { // no entities mentioned
+                builder.Prompts.text(session, 'Which alert would you like to delete?');
+            } else {
+                next({ response: args[0] });
+            }
         },
         (session, args, next) => {
+            var companyName = args.response;
             api.listAlerts().then(
                 (alerts) => {
                     var selectedAlert = alerts.find((alert) => {
-                       return alert.title === companyName
+                       return alert.title === companyName;
                     });
 
                     if (selectedAlert === undefined) {
