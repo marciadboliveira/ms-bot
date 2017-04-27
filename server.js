@@ -275,8 +275,18 @@ function main() {
             next(args);
         },
         (session, args, next) => {
+            // If no time window specified, default to news from the last 7 days
+            // TODO: use moment instead?
+            since_date = new Date();
+            since_date.setDate(since_date.getDate() - 7);
+            since = parseInt((since_date.getTime() / 1000).toFixed(0))
             api.getTimeExpressions(args.query).then((times) => {
-                if (times.length > 0){
+                if (times.length > 1) {
+                    // If several datetimes are found, fall back to the earliest one
+                    dates = times.map(t => new Date(t.resolved))
+                    since = parseInt((Math.min.apply(null, dates) / 1000).toFixed(0));
+                }
+                else if (times.length > 0){
                     // TODO work out how to deal with multiple times
                     since = moment(times[0].resolved).unix();
                     console.log('json', times[0].resolved);
@@ -306,15 +316,21 @@ function main() {
                         }
                         api.getAlert(selectedAlert.id, themes, since)
                             .then(json => {
+                                var topic_str = themes.length ? " (topics: " + themes + ")" : ""
                                 if (json.data.length > 0) {
                                     // session.say(json.data[0].skim.body, json.data[0].skim.body.split('\n')[0]);
                                     let data = json.data.slice(0, 3);
+                                    let times = data.map(d => d.created_at)
+                                    console.log(times)
                                     let skims = data.map(d => d.skim);
+                                    session.say(
+                                        `Here are updates on ${companyName} ${topic_str} since ${new Date(since*1000)}.`
+                                    )
                                     cards.sendSkimsCards(skims, session);
                                 }
                                 else {
                                     session.say(
-                                        `No new updates for ${companyName} (topics: ${themes})`, 
+                                        `No new updates on ${companyName} ${topic_str} since ${new Date(since*1000)}. Try asking for older news.`,
                                         `No new updates for ${companyName}`
                                     );
                                 }
