@@ -116,6 +116,12 @@ function handleIntent(session, msg, defaultResponse, cancelPrevious) {
     });
 }
 
+function proactiveMessage(bot, toAddress, msg) {
+
+   var message = new builder.Message().address(toAddress).text(msg);
+    bot.send(message);
+}
+
 //=========================================================
 // Bot Setup
 //=========================================================
@@ -450,7 +456,8 @@ function main() {
         })
     });
 
-    bot.dialog('/readSkim',[
+    bot.dialog('/readSkim', [
+        // Have Cortana read out the skim body
         (session, args, next) => {
             var uuid = args[0];
             if ('skims' in session.privateConversationData && 
@@ -462,6 +469,24 @@ function main() {
                 session.say('Sorry, can\'t find that skim');
             }
             session.endDialog();
+        }
+    ]);
+
+    bot.dialog('/proactiveAlert', [
+        (session, args, next) => {
+            session.send("I'm going to send you a message in 5 seconds")
+
+            // TODO: In real life we'd add the address, message etc to 
+            // persistent storage and have some more sophisticated mechanism
+            // to ensure things survive reboots/redeploys etc
+
+            // The thing to not about proactive messaging is that you can't rely
+            // on the session being valid accross reboots etc so instead we save the return
+            // address and use that directly
+
+            setTimeout(() => {
+                proactiveMessage(bot, session.message.address, "I'm a proactive message");
+            }, 5000);
         }
     ]);
 }
