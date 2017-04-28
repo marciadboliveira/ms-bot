@@ -6,6 +6,7 @@ var restify = require('restify');
 var builder = require('botbuilder');
 var api = require('./api.js');
 var cards = require('./cards.js')
+var alerting = require('./alerting.js');
 
 var config = nconf.env().argv().file({file: 'localConfig.json'});
 
@@ -49,11 +50,14 @@ function titleCase(str) {
 function createThemeCard(session, themes) {
 
     var card = new builder.HeroCard(session)
-    .title('BotFramework Hero Card')
-    .subtitle('Your bots — wherever your users are talking')
+    .title('Choose an alert theme')
+    .subtitle('subtitle')
     .text('Choose a theme')
     .images([
-        builder.CardImage.create(session, 'https://sec.ch9.ms/ch9/7ff5/e07cfef0-aa3b-40bb-9baa-7c9ef8ff7ff5/buildreactionbotframework_960.jpg')
+        builder.CardImage.create(
+            session, 
+            'http://lh3.googleusercontent.com/k7UDrgH6HQjEa4fECRQrsdRWfwUcefFFubUL-X1MbV8XUzy0an1TRbUvoKdlAXL8vro=w300-rw'
+        )
     ]);
 
     var buttons = [];
@@ -64,6 +68,76 @@ function createThemeCard(session, themes) {
 
     return card;
 }
+
+function createFrequencyCard(session, freqs) {
+
+    var card = new builder.HeroCard(session)
+    .title('Choose an alert frequency')
+    .subtitle('Your bots — wherever your users are talking')
+    .text('Choose a theme')
+    .images([
+        builder.CardImage.create(
+            session, 
+            'http://lh3.googleusercontent.com/k7UDrgH6HQjEa4fECRQrsdRWfwUcefFFubUL-X1MbV8XUzy0an1TRbUvoKdlAXL8vro=w300-rw'
+        )
+    ]);
+
+    var buttons = [];
+    buttons = freqs.map((e) => {
+        return new builder.CardAction.imBack(session, e, titleCase(e));
+    });
+    card.buttons(buttons);
+
+    return card;
+}
+
+function createAMPMCard(session) {
+
+    var card = new builder.HeroCard(session)
+    .title('What time of day?')
+    .subtitle('subtitle')
+    .text('Choose AM or PM')
+    .images([
+        builder.CardImage.create(
+            session, 
+            'http://lh3.googleusercontent.com/k7UDrgH6HQjEa4fECRQrsdRWfwUcefFFubUL-X1MbV8XUzy0an1TRbUvoKdlAXL8vro=w300-rw'
+        )
+    ]);
+
+    var buttons = [
+        new builder.CardAction.imBack(session, "AM", "AM"),
+        new builder.CardAction.imBack(session, "PM", "PM")
+    ];
+    card.buttons(buttons);
+
+    return card;
+}
+
+function createDaysCard(session, themes) {
+
+    var card = new builder.HeroCard(session)
+    .title('Choose a day')
+    .subtitle('Which day of the week do you want your alert delivered?')
+    .text('Choose a day of the week')
+    .images([
+        builder.CardImage.create(
+            session, 
+            'http://lh3.googleusercontent.com/k7UDrgH6HQjEa4fECRQrsdRWfwUcefFFubUL-X1MbV8XUzy0an1TRbUvoKdlAXL8vro=w300-rw'
+        )
+    ]);
+
+
+    var days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+
+    var buttons = [];
+    buttons = days.map((e) => {
+        return new builder.CardAction.imBack(session, e, titleCase(e));
+    });
+    card.buttons(buttons);
+
+    return card;
+}
+
 
 function loadHelp() {
     return new Promise((resolve, reject) => {
@@ -122,12 +196,22 @@ function proactiveMessage(bot, toAddress, msg) {
     bot.send(message);
 }
 
-function proactiveDialog(bot, toAddress, msg) {
-    // Start a dialog at any time - Be aware, you might interrupt an existing conversation
-   var message = new builder.Message().address(toAddress).text(msg);
-   bot.send(message);
-}
+let INACTIVITY_TIMEOUT = 1000;
 
+function onAlert(bot, toAddress, skims) {
+    toAddress = JSON.parse(toAddress);
+    bot.isInConversation(toAddress, (err, lastAccess) => {
+        if (!err) {
+            if ((new Date().getTime() - lastAccess) > INACTIVITY_TIMEOUT) {
+                // If user hasn't said anything for an hour, send the whole skim
+                bot.beginDialog(toAddress, '/sendSkimCards', skims);
+            }
+            else {
+                proactiveMessage(bot, toAddress, "You have new skims");
+            }
+        }
+    });
+}
 
 //=========================================================
 // Bot Setup
@@ -192,7 +276,7 @@ function main() {
                     next();
                 })
                 .catch(err => {
-                    session.send('Failed to list alerts');
+                    session.send('Failed to list alerts:' + err);
                     next();
                 });
         },
@@ -219,13 +303,58 @@ function main() {
             session.privateConversationData.alerts[companyName] = {};
             session.privateConversationData.alerts[companyName].themes = args.response;
 
+            session.beginDialog('/getFrequency');
+        },
+        (session, args, next) => {
+ 
+            if (!session.privateConversationData.alerts) {
+                session.privateConversationData.alerts = {};
+            }
+            session.privateConversationData.alerts[companyName] = {};
+            session.privateConversationData.alerts[companyName].frequency = args.response;
+
+            // Empty step, perhaps some extra handling for frequency??
+            next();
+        },
+        (session, args, next) => {
             api.createAlert(companyName, [companyName])
                 .then(json => {
-                    session.send('Created alert for \"' + json.title + '\"');
+
+                    session.send('Created alert for \"' + companyName + '\"');
+
+                    var freqDesc = '';
+                    var freq = session.privateConversationData.alerts[companyName].frequency;
+
+                    switch (freq) {
+                        case 'am' : freqDesc = 'Daily in the morning';
+                        break;
+
+                        case 'pm' : freqDesc = 'Daily in the evening';
+                        break;
+
+                        default : {
+                            freqDesc = freq;
+                        }
+                    }
+
+                    session.send('Alerting frequency: ' + freqDesc);
+
+                    if (session.privateConversationData.alerts[companyName].frequency != 'never') {
+                        // Start alerting for this skim                        
+                        alerting.addAlert(
+                            session.message.user.id,
+                            JSON.stringify(session.message.address),
+                            json.id,
+                            companyName,
+                            session.privateConversationData.alerts[companyName].themes,
+                            session.privateConversationData.alerts[companyName].frequency
+                        );
+                    }
+
                     next();
                 })
                 .catch(err => {
-                    session.send('Failed to create alert for \"' + companyName + '\"');
+                    session.send('Failed to create alert for \"' + companyName + '\":' + err);
                     next();
                 })
         },
@@ -254,10 +383,11 @@ function main() {
                             .then(json => {
                                 delete session.privateConversationData.alerts[companyName];
                                 session.send('Deleted alert for \"' + selectedAlert.title + '\"');
+                                alerting.deleteAlert(session.message.user.id, selectedAlert.id);
                                 next();
                             })
                             .catch(err => {
-                                session.send('Failed to delete alert for \"' + companyName + '\"');
+                                session.send('Failed to delete alert for \"' + companyName + '\": ' + err);
                                 next();
                             })
                     }
@@ -321,12 +451,13 @@ function main() {
                                 next();
                             })
                             .catch(err => {
-                                session.send('Failed to get alert for \"' + companyName + '\"');
+                                session.send('Failed to get alert for \"' + companyName + '\":' + err);
                                 next();
                             })
                     }
                 }
            ).catch(err => {
+               session.send("an errror occurred:" + err)
                session.beginDialog('/getRecentNews', [companyName]);
            });
         },
@@ -348,7 +479,7 @@ function main() {
                     next();
                 })
                .catch(err => {
-                    session.send('Failed to get recent news for \"' + companyName + '\"');
+                    session.send('Failed to get recent news for \"' + companyName + '\":' + err);
                     session.endDialog();
                });
         },
@@ -397,7 +528,7 @@ function main() {
 
             if (chosenTheme == 'done') {
                 // Selection complete
-                session.privateConversationData.chosenThemes = null;
+                delete session.privateConversationData.chosenThemes;
                 session.endDialogWithResult({response:chosenThemes})
             }
             else {
@@ -445,18 +576,68 @@ function main() {
                         .buttons([
                             builder.CardAction.imBack(session, 'Daily', 'Daily'),
                             builder.CardAction.imBack(session, 'Weekly', 'Weekly'),
-                            builder.CardAction.imBack(session, 'ASAP', 'ASAP')
+                            builder.CardAction.imBack(session, 'ASAP', 'ASAP'),
+                            builder.CardAction.imBack(session, 'Never', 'Never')
                         ])
                 ]);
             builder.Prompts.text(session, message);
         },
+        (session, result, next) => {
+            var freq = result.response;
+            if (freq == 'Weekly') {
+                session.beginDialog('/getDayOfWeek');
+            }
+            else if (freq == 'Daily') {
+                session.beginDialog('/getAMPM');
+            }
+            else {
+                next({response:freq});
+            }
+        },
         (session, result) => {
-            let frequency = result.response;
-            session.endDialogWithResult({response: frequency});
+            session.endDialogWithResult(result);
         }
     ]);
 
-    bot.dialog('/help', (session, args, next) => {
+    bot.dialog('/getAMPM', [
+        (session, args, next) => {
+            var msg = new builder.Message(session).addAttachment(createAMPMCard(session));
+            builder.Prompts.text(session, msg);
+        },
+        (session, result) => {
+            var ampm = result.response.toLowerCase();
+            if (['am', 'pm'].indexOf(ampm) == -1) {
+                builder.Prompts.text(session, "Please choose AM or PM");
+            }
+            else {
+                session.endDialogWithResult({response:ampm});
+            }
+        }
+    ]);
+
+    bot.dialog('/getDayOfWeek', [
+        (session, args, next) => {
+            var msg = new builder.Message(session).addAttachment(createDaysCard(session));
+            builder.Prompts.text(session, msg);
+        },
+        (session, args, next) => {
+            var day = args.response;
+            if (['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].indexOf(day) == -1) {
+                session.send("Please choose a day of the week");
+            }
+            else {
+                session.privateConversationData.freq = day;
+                session.beginDialog('/getAMPM');
+            }
+        },
+        (session, args, next) => {
+            session.endDialogWithResult({response:session.privateConversationData.freq + ":" + args.response});
+            delete session.privateConversationData.freq;
+        }
+    ]);
+
+
+   bot.dialog('/help', (session, args, next) => {
         loadHelp().then((result) => {
             session.send(result);
             session.endDialog();
@@ -498,6 +679,22 @@ function main() {
             session.endDialog();
         }
     ]);
+
+    bot.dialog('/sendSkimCards', [
+        (session, args, next) => {
+            var skims = args;
+            if (skims) {
+                skims = skims.data.map(s => s.skim);
+                cards.sendSkimsCards(skims, session);
+            }
+            session.endDialog();
+        },
+    ]);
+
+    // Start alerting engine
+    alerting.beginAlerting((user, skims) => {
+        onAlert(bot, user, skims);
+    });
 }
 
 main();

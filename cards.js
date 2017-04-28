@@ -38,6 +38,9 @@ function createSkimCard(skim, session) {
 
 function sendSkimsCards(skims, session) {
 
+    // Clear the skim cache
+    session.privateConversationData.skims = {};
+
     let message = new builder.Message(session);
     let skimCards = skims.map(skim => createSkimCard(skim, session));
 
