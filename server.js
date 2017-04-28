@@ -261,11 +261,17 @@ function main() {
                     } else { 
                         api.deleteAlert(selectedAlert.id)
                             .then(json => {
-                                delete session.privateConversationData.alerts[companyName];
+                                try {
+                                    delete session.privateConversationData.alerts[companyName];
+                                }
+                                catch (err) {
+                                    // this alert is probably not in the conversation data, move on
+                                }
                                 session.send('Deleted alert for \"' + selectedAlert.title + '\"');
                                 next();
                             })
                             .catch(err => {
+                                console.log(err);
                                 session.send('Failed to delete alert for \"' + companyName + '\"');
                                 next();
                             })
