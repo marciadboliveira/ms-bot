@@ -288,10 +288,15 @@ function main() {
 
     bot.dialog('/createAlert', [
         (session, args, next) => {
-            companyName = args[0];
-            next();
+            if (!args.length) { // no entity mentioned
+                builder.Prompts.text(session, 'Which company are you interested in?');
+                 //will call next when user types something in
+            } else { 
+                next({ response: args[0] });  //make compatible with what Prompts returns
+            }
         },
         (session, args, next) => {
+            companyName = args.response;
             session.beginDialog('/getThemes');
         },
         (session, args, next) => {
@@ -365,14 +370,18 @@ function main() {
 
     bot.dialog('/deleteAlert', [
         (session, args, next) => {
-            companyName = args[0];
-            next();
+            if (!args.length) { // no entities mentioned
+                builder.Prompts.text(session, 'Which alert would you like to delete?');
+            } else {
+                next({ response: args[0] });
+            }
         },
         (session, args, next) => {
+            var companyName = args.response;
             api.listAlerts().then(
                 (alerts) => {
                     var selectedAlert = alerts.find((alert) => {
-                       return alert.title === companyName
+                       return alert.title === companyName;
                     });
 
                     if (selectedAlert === undefined) {
@@ -381,7 +390,12 @@ function main() {
                     } else { 
                         api.deleteAlert(selectedAlert.id)
                             .then(json => {
-                                delete session.privateConversationData.alerts[companyName];
+                                try {
+                                    delete session.privateConversationData.alerts[companyName];
+                                }
+                                catch (err) {
+                                    // this alert is probably not in the conversation data, move on
+                                }
                                 session.send('Deleted alert for \"' + selectedAlert.title + '\"');
                                 alerting.deleteAlert(session.message.user.id, selectedAlert.id);
                                 next();
@@ -405,13 +419,19 @@ function main() {
             next(args);
         },
         (session, args, next) => {
+            // If no time window specified, default to news from the last 7 days
+            since = moment().subtract(7, 'days').unix()
             api.getTimeExpressions(args.query).then((times) => {
-                if (times.length > 0){
-                    // TODO work out how to deal with multiple times
-                    since = moment(times[0].resolved).unix();
-                    console.log('json', times[0].resolved);
-                    console.log('parsed', moment(times[0].resolved));
-                    console.log('parsed unix', since);
+                // remove times that are not properly resolved or are in the future
+                times = times.filter( t => {
+                    return t.resolved !== undefined && moment(t.resolved).isBefore(moment())
+                });
+                if (times.length > 0) {
+                    // TODO expressions like "in the past 10 minutes" do not currently have a resolved field
+                    // CoreNLP recognises them as a period, but *with an undefined start and end time*
+                    dates = times.map(t => moment(t.resolved).unix());
+                    // If several datetimes are found, fall back to the earliest one
+                    since = Math.min.apply(null, dates);
                 }
                 next(args);
             });  
@@ -434,17 +454,25 @@ function main() {
                                 themes = session.privateConversationData.alerts[companyName].themes;
                             }
                         }
+                        console.log(since);
                         api.getAlert(selectedAlert.id, themes, since)
                             .then(json => {
+                                var topic_str = themes.length ? " (topics: " + themes + ")" : ""
                                 if (json.data.length > 0) {
                                     // session.say(json.data[0].skim.body, json.data[0].skim.body.split('\n')[0]);
                                     let data = json.data.slice(0, 3);
+                                    let times = data.map(d => d.created_at)
+                                    console.log(times)
                                     let skims = data.map(d => d.skim);
+                                    session.say(
+                                        `Here are updates on ${companyName} ${topic_str} since ${new Date(since*1000)}.`
+                                    )
                                     cards.sendSkimsCards(skims, session);
                                 }
                                 else {
+                                    let when = moment(new Date(since * 1000)).format("MMMM Do YYYY, h:mm a");
                                     session.say(
-                                        `No new updates for ${companyName} (topics: ${themes})`, 
+                                        `No new updates on ${companyName} ${topic_str} since ${when}. Try asking for older news.`,
                                         `No new updates for ${companyName}`
                                     );
                                 }
