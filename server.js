@@ -295,7 +295,7 @@ function main() {
             api.getTimeExpressions(args.query).then((times) => {
                 // remove times that are not properly resolved or are in the future
                 times = times.filter( t => {
-                    t.resolved !== undefined && moment(t.resolved).isBefore(moment())
+                    return t.resolved !== undefined && moment(t.resolved).isBefore(moment())
                 });
                 if (times.length > 0) {
                     // TODO expressions like "in the past 10 minutes" do not currently have a resolved field
