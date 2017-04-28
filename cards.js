@@ -22,6 +22,7 @@ function createSkimCard(skim, session) {
         if (session.source == 'cortana') {
             buttons.push(builder.CardAction.postBack(session, `/readSkim:${uuid}`, 'Read this'));
         }
+        card.buttons(buttons);
     }
 
     if (skim.images.length > 0) {
